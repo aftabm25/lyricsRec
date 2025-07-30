@@ -57,6 +57,50 @@ body {
   line-height: 1.5;
 }
 
+/* Recognition Section */
+.recognition-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40px;
+}
+
+.recognize-song-btn {
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  border: none;
+  border-radius: 50px;
+  padding: 20px 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 12px 32px rgba(29, 185, 84, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.recognize-song-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.recognize-song-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(29, 185, 84, 0.4);
+}
+
+.recognize-song-btn:hover::before {
+  left: 100%;
+}
+
 .songs-grid {
   display: grid;
   gap: 24px;
@@ -403,6 +447,15 @@ body {
   
   .app-header p {
     font-size: 1.1rem;
+  }
+  
+  .recognition-section {
+    margin-bottom: 24px;
+  }
+  
+  .recognize-song-btn {
+    padding: 16px 24px;
+    font-size: 1rem;
   }
   
   .songs-grid {

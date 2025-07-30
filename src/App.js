@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getAllSongs } from './data/songs';
+import { getAllSongs, getSongById } from './data/songs';
+import SongRecognition from './components/SongRecognition';
 import './App.css';
 
 function App() {
@@ -7,6 +8,8 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [detectedSong, setDetectedSong] = useState(null);
+  const [showRecognition, setShowRecognition] = useState(false);
   const songs = getAllSongs();
   const intervalRef = useRef(null);
   const activeLineRef = useRef(null);
@@ -24,10 +27,29 @@ function App() {
     setIsPlaying(false);
     setCurrentLineIndex(0);
     setProgress(0);
+    setDetectedSong(null);
   };
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
+  };
+
+  const handleSongDetected = (song) => {
+    setDetectedSong(song);
+    setShowRecognition(false);
+    
+    // Try to find the detected song in our database
+    const foundSong = songs.find(s => 
+      s.title.toLowerCase().includes(song.title.toLowerCase()) ||
+      s.artist.toLowerCase().includes(song.artist.toLowerCase())
+    );
+    
+    if (foundSong) {
+      setSelectedSong(foundSong);
+    } else {
+      // Show a notification that the song wasn't found
+      alert(`Song detected: ${song.title} by ${song.artist}\n\nThis song is not in our database yet.`);
+    }
   };
 
   // Auto-scroll to active line
@@ -131,24 +153,39 @@ function App() {
           <h1>Lyrics & Meanings</h1>
           <p>Discover the deeper meaning behind your favorite songs</p>
         </header>
-        
-        <div className="songs-grid">
-          {songs.map((song) => (
-            <div 
-              key={song.id} 
-              className="song-card"
-              onClick={() => handleSongSelect(song)}
-            >
-              <div className="song-info">
-                <h2 className="song-title">{song.title}</h2>
-                <p className="song-artist">{song.artist}</p>
-                <p className="song-album">{song.album} • {song.year}</p>
-                <p className="song-lyrics-count">{song.lyrics.length} lines</p>
-              </div>
-              <div className="song-arrow">→</div>
+
+        {showRecognition ? (
+          <SongRecognition onSongDetected={handleSongDetected} />
+        ) : (
+          <>
+            <div className="recognition-section">
+              <button 
+                className="recognize-song-btn"
+                onClick={() => setShowRecognition(true)}
+              >
+                🎵 Recognize Current Song
+              </button>
             </div>
-          ))}
-        </div>
+            
+            <div className="songs-grid">
+              {songs.map((song) => (
+                <div 
+                  key={song.id} 
+                  className="song-card"
+                  onClick={() => handleSongSelect(song)}
+                >
+                  <div className="song-info">
+                    <h2 className="song-title">{song.title}</h2>
+                    <p className="song-artist">{song.artist}</p>
+                    <p className="song-album">{song.album} • {song.year}</p>
+                    <p className="song-lyrics-count">{song.lyrics.length} lines</p>
+                  </div>
+                  <div className="song-arrow">→</div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
