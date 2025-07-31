@@ -88,16 +88,15 @@ const SongRecognition = ({ onSongDetected }) => {
       setRecordingTime(0);
       audioChunksRef.current = [];
 
-      // Request microphone access with mobile-friendly settings
+      // Request microphone access with working settings
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: false, // Disable echo cancellation to avoid conflicts
-          noiseSuppression: false, // Disable noise suppression
-          autoGainControl: false, // Disable auto gain control
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
           sampleRate: 44100,
-          channelCount: 1, // Mono recording to reduce conflicts
-          latency: 0.1, // Higher latency to avoid audio session conflicts
-          volume: 0.5 // Lower volume to minimize interference
+          channelCount: 2,
+          latency: 0.01
         }
       });
 
@@ -120,7 +119,7 @@ const SongRecognition = ({ onSongDetected }) => {
       // Start visualization
       visualize();
 
-      // Start recording immediately without audio level check
+      // Start recording immediately
       startRecording(stream);
 
     } catch (err) {
@@ -131,33 +130,15 @@ const SongRecognition = ({ onSongDetected }) => {
   };
 
   const startRecording = (stream) => {
-    // Try different audio formats for better compatibility with ACRCloud
-    const mimeTypes = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/mp4;codecs=aac',
-      'audio/mp4',
-      'audio/wav'
-    ];
-
-    let selectedMimeType = null;
-    for (const mimeType of mimeTypes) {
-      if (MediaRecorder.isTypeSupported(mimeType)) {
-        selectedMimeType = mimeType;
-        break;
-      }
-    }
-
-    if (!selectedMimeType) {
-      console.warn('No supported audio format found, using default');
-      selectedMimeType = 'audio/webm';
-    }
-
-    console.log('Using MIME type:', selectedMimeType);
+    // Use simple, reliable audio format
+    const mimeType = 'audio/webm;codecs=opus';
+    
+    console.log('Using MIME type:', mimeType);
+    console.log('MediaRecorder supported:', MediaRecorder.isTypeSupported(mimeType));
 
     const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: selectedMimeType,
-      audioBitsPerSecond: 128000 // Higher quality for better fingerprinting
+      mimeType: mimeType,
+      audioBitsPerSecond: 128000
     });
     
     mediaRecorderRef.current = mediaRecorder;
@@ -166,11 +147,14 @@ const SongRecognition = ({ onSongDetected }) => {
       console.log('Data available:', event.data.size, 'bytes');
       if (event.data.size > 0) {
         audioChunksRef.current.push(event.data);
+        console.log('Total chunks:', audioChunksRef.current.length);
       }
     };
 
     mediaRecorder.onstop = async () => {
       console.log('Recording stopped. Total chunks:', audioChunksRef.current.length);
+      console.log('Total data size:', audioChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0), 'bytes');
+      
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
@@ -186,8 +170,8 @@ const SongRecognition = ({ onSongDetected }) => {
       console.log('Recording started');
     };
 
-    // Start recording with smaller timeslices for better data collection
-    mediaRecorder.start(100); // Collect data every 100ms
+    // Start recording with 1-second timeslices
+    mediaRecorder.start(1000);
 
     // Start recording timer
     recordingTimerRef.current = setInterval(() => {
@@ -227,22 +211,15 @@ const SongRecognition = ({ onSongDetected }) => {
         throw new Error('No audio data recorded');
       }
 
-      // Create blob with proper MIME type
-      const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-      const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+      // Create blob
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
       
       console.log('Audio blob size:', audioBlob.size, 'bytes');
       console.log('Recording duration:', recordingTime, 'seconds');
       console.log('Audio chunks:', audioChunksRef.current.length);
-      console.log('MIME type:', mimeType);
       
       if (audioBlob.size === 0) {
         throw new Error('Audio blob is empty');
-      }
-
-      // Check minimum size for ACRCloud (usually needs at least 1KB)
-      if (audioBlob.size < 1024) {
-        throw new Error('Audio file too small. Please record for longer or ensure audio is being captured.');
       }
       
       setRecognitionProgress(30);
