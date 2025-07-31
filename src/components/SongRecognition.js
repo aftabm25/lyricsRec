@@ -38,14 +38,12 @@ const SongRecognition = ({ onSongDetected }) => {
   const [recognitionProgress, setRecognitionProgress] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
   const [maxRecordingTime] = useState(30); // Increased to 30 seconds
-  const [showFileUpload, setShowFileUpload] = useState(false);
 
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     // Check if Web Audio API is supported
@@ -88,19 +86,52 @@ const SongRecognition = ({ onSongDetected }) => {
       setRecordingTime(0);
       audioChunksRef.current = [];
 
-      // Request microphone access with working settings
+      // Request microphone access with better settings
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+          echoCancellation: true, // Enable echo cancellation
+          noiseSuppression: true, // Enable noise suppression
+          autoGainControl: true, // Enable auto gain control
           sampleRate: 44100,
-          channelCount: 2,
-          latency: 0.01
+          channelCount: 2, // Stereo recording
+          latency: 0.01, // Low latency
+          volume: 1.0 // Full volume
         }
       });
 
       setMediaStream(stream);
+
+      // Test audio levels to ensure microphone is working
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let hasAudio = false;
+      
+      // Check for audio activity for 2 seconds
+      const audioCheck = setInterval(() => {
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        console.log('Audio level:', average);
+        
+        if (average > 10) {
+          hasAudio = true;
+          clearInterval(audioCheck);
+          console.log('Audio detected, starting recording...');
+          startRecording(stream);
+        }
+      }, 100);
+
+      // If no audio detected after 2 seconds, still start recording
+      setTimeout(() => {
+        if (!hasAudio) {
+          clearInterval(audioCheck);
+          console.log('No audio detected, but starting recording anyway...');
+          startRecording(stream);
+        }
+      }, 2000);
 
       // Create audio context for visualization
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -119,9 +150,6 @@ const SongRecognition = ({ onSongDetected }) => {
       // Start visualization
       visualize();
 
-      // Start recording immediately
-      startRecording(stream);
-
     } catch (err) {
       console.error('Error accessing microphone:', err);
       setError('Unable to access microphone. Please check permissions.');
@@ -130,15 +158,31 @@ const SongRecognition = ({ onSongDetected }) => {
   };
 
   const startRecording = (stream) => {
-    // Use simple, reliable audio format
-    const mimeType = 'audio/webm;codecs=opus';
-    
-    console.log('Using MIME type:', mimeType);
-    console.log('MediaRecorder supported:', MediaRecorder.isTypeSupported(mimeType));
+    // Try different audio formats for better compatibility
+    const mimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/wav'
+    ];
+
+    let selectedMimeType = null;
+    for (const mimeType of mimeTypes) {
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        selectedMimeType = mimeType;
+        break;
+      }
+    }
+
+    if (!selectedMimeType) {
+      console.warn('No supported audio format found, using default');
+    }
+
+    console.log('Using MIME type:', selectedMimeType);
 
     const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: mimeType,
-      audioBitsPerSecond: 128000
+      mimeType: selectedMimeType,
+      audioBitsPerSecond: 128000 // Higher quality
     });
     
     mediaRecorderRef.current = mediaRecorder;
@@ -147,14 +191,11 @@ const SongRecognition = ({ onSongDetected }) => {
       console.log('Data available:', event.data.size, 'bytes');
       if (event.data.size > 0) {
         audioChunksRef.current.push(event.data);
-        console.log('Total chunks:', audioChunksRef.current.length);
       }
     };
 
     mediaRecorder.onstop = async () => {
       console.log('Recording stopped. Total chunks:', audioChunksRef.current.length);
-      console.log('Total data size:', audioChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0), 'bytes');
-      
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
@@ -170,8 +211,8 @@ const SongRecognition = ({ onSongDetected }) => {
       console.log('Recording started');
     };
 
-    // Start recording with 1-second timeslices
-    mediaRecorder.start(1000);
+    // Start recording with smaller timeslices for more frequent data
+    mediaRecorder.start(100); // Collect data every 100ms
 
     // Start recording timer
     recordingTimerRef.current = setInterval(() => {
@@ -211,12 +252,14 @@ const SongRecognition = ({ onSongDetected }) => {
         throw new Error('No audio data recorded');
       }
 
-      // Create blob
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      // Create blob with proper MIME type
+      const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
       
       console.log('Audio blob size:', audioBlob.size, 'bytes');
       console.log('Recording duration:', recordingTime, 'seconds');
       console.log('Audio chunks:', audioChunksRef.current.length);
+      console.log('MIME type:', mimeType);
       
       if (audioBlob.size === 0) {
         throw new Error('Audio blob is empty');
@@ -289,20 +332,7 @@ const SongRecognition = ({ onSongDetected }) => {
         });
       } else {
         console.error('ACRCloud error:', result.status);
-        
-        // Provide specific error messages based on error codes
-        let errorMessage = 'Recognition failed';
-        if (result.status?.code === 2004) {
-          errorMessage = 'Could not generate fingerprint. Please ensure audio is clear and contains music.';
-        } else if (result.status?.code === 2005) {
-          errorMessage = 'No music detected in the audio. Please try with clearer music.';
-        } else if (result.status?.code === 2006) {
-          errorMessage = 'Audio quality too low. Please try with better audio quality.';
-        } else if (result.status?.msg) {
-          errorMessage = `Recognition failed: ${result.status.msg}`;
-        }
-        
-        setError(errorMessage);
+        setError(`Recognition failed: ${result.status?.msg || 'Unknown error'}`);
         simulateSongDetection();
       }
 
@@ -408,43 +438,6 @@ const SongRecognition = ({ onSongDetected }) => {
     await startListening();
   };
 
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith('audio/')) {
-      console.log('Audio file selected:', file.name, file.size, 'bytes', file.type);
-      
-      // Check file size
-      if (file.size < 1024) {
-        setError('Audio file too small. Please select a larger audio file.');
-        return;
-      }
-      
-      if (file.size > 50 * 1024 * 1024) { // 50MB limit
-        setError('Audio file too large. Please select a smaller file (under 50MB).');
-        return;
-      }
-      
-      audioChunksRef.current = [file];
-      setRecordingTime(0);
-      setIsRecognizing(true);
-      setRecognitionProgress(10);
-      
-      // Process the uploaded file
-      setTimeout(() => {
-        identifySong();
-      }, 100);
-    } else {
-      setError('Please select a valid audio file (MP3, WAV, M4A, etc.)');
-    }
-    
-    // Reset file input
-    event.target.value = '';
-  };
-
-  const openFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
   if (!isSupported) {
     return (
       <div className="song-recognition">
@@ -476,40 +469,14 @@ const SongRecognition = ({ onSongDetected }) => {
           <li>Minimize background noise and echo</li>
           <li>Record for at least 10-15 seconds for best results</li>
           <li>Keep your device close to the music source</li>
-          <li><strong>Mobile users:</strong> If music stops, try using headphones or external speakers</li>
-          <li><strong>Mobile users:</strong> You can also try recording from another device while music plays on this one</li>
-          <li><strong>Debug:</strong> Check browser console (F12) for detailed logs</li>
         </ul>
       </div>
 
       <div className="recognition-controls">
         {!isListening ? (
-          <div className="control-buttons">
-            <button className="start-listening-btn" onClick={handleStartListening}>
-              🎵 Start Listening
-            </button>
-            <button className="upload-btn" onClick={openFileUpload}>
-              📁 Upload Audio File
-            </button>
-            <button className="test-btn" onClick={() => {
-              console.log('=== DEBUG INFO ===');
-              console.log('MediaRecorder supported:', typeof MediaRecorder !== 'undefined');
-              console.log('AudioContext supported:', typeof AudioContext !== 'undefined');
-              console.log('getUserMedia supported:', typeof navigator.mediaDevices?.getUserMedia !== 'undefined');
-              console.log('ACRCloud configured:', isAcrCloudConfigured());
-              console.log('Current audio chunks:', audioChunksRef.current.length);
-              console.log('==================');
-            }}>
-              🔧 Debug Info
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="audio/*"
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-            />
-          </div>
+          <button className="start-listening-btn" onClick={handleStartListening}>
+            🎵 Start Listening
+          </button>
         ) : (
           <button className="stop-listening-btn" onClick={stopListening}>
             ⏹️ Stop Listening
