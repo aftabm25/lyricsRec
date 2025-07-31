@@ -86,56 +86,51 @@ const SongRecognition = ({ onSongDetected }) => {
       setRecordingTime(0);
       audioChunksRef.current = [];
 
-      // Request microphone access with better settings
+      // Check if we're on mobile
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      // Mobile-friendly audio constraints to minimize background music interference
+      const audioConstraints = {
+        echoCancellation: false, // Disable to reduce interference
+        noiseSuppression: false, // Disable to reduce interference
+        autoGainControl: false, // Disable to reduce interference
+        sampleRate: 44100,
+        channelCount: 1, // Mono recording to reduce complexity
+        latency: 0.1, // Higher latency to reduce interference
+        volume: 0.5 // Lower volume to reduce interference
+      };
+
+      // Additional mobile-specific optimizations
+      if (isMobile) {
+        audioConstraints.latency = 0.2; // Even higher latency on mobile
+        audioConstraints.volume = 0.3; // Lower volume on mobile
+        audioConstraints.channelCount = 1; // Mono only on mobile
+        console.log('Using mobile-optimized audio settings to preserve background music');
+      }
+
+      // Request microphone access with minimal interference settings
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true, // Enable echo cancellation
-          noiseSuppression: true, // Enable noise suppression
-          autoGainControl: true, // Enable auto gain control
-          sampleRate: 44100,
-          channelCount: 2, // Stereo recording
-          latency: 0.01, // Low latency
-          volume: 1.0 // Full volume
-        }
+        audio: audioConstraints
       });
 
       setMediaStream(stream);
 
-      // Test audio levels to ensure microphone is working
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const analyser = audioContext.createAnalyser();
-      const source = audioContext.createMediaStreamSource(stream);
-      source.connect(analyser);
-      
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      let hasAudio = false;
-      
-      // Check for audio activity for 2 seconds
-      const audioCheck = setInterval(() => {
-        analyser.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        console.log('Audio level:', average);
-        
-        if (average > 10) {
-          hasAudio = true;
-          clearInterval(audioCheck);
-          console.log('Audio detected, starting recording...');
-          startRecording(stream);
-        }
-      }, 100);
-
-      // If no audio detected after 2 seconds, still start recording
-      setTimeout(() => {
-        if (!hasAudio) {
-          clearInterval(audioCheck);
-          console.log('No audio detected, but starting recording anyway...');
-          startRecording(stream);
-        }
-      }, 2000);
-
       // Create audio context for visualization
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       const context = new AudioContextClass();
+      
+      // Mobile-specific audio context settings to preserve background audio
+      if (isMobile) {
+        // Try to resume audio context without interrupting background audio
+        if (context.state === 'suspended') {
+          try {
+            await context.resume();
+          } catch (e) {
+            console.log('Could not resume audio context:', e);
+          }
+        }
+      }
+      
       setAudioContext(context);
 
       // Create analyser for visualization
@@ -149,6 +144,9 @@ const SongRecognition = ({ onSongDetected }) => {
 
       // Start visualization
       visualize();
+
+      // Start recording for ACRCloud
+      startRecording(stream);
 
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -469,6 +467,11 @@ const SongRecognition = ({ onSongDetected }) => {
           <li>Minimize background noise and echo</li>
           <li>Record for at least 10-15 seconds for best results</li>
           <li>Keep your device close to the music source</li>
+          {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && (
+            <li style={{ color: '#ffa500', fontWeight: 'bold' }}>
+              📱 Mobile: If background music stops, try pausing and resuming your music app after starting recording
+            </li>
+          )}
         </ul>
       </div>
 
