@@ -2,6 +2,30 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ACRCLOUD_CONFIG, isAcrCloudConfigured, getAcrCloudConfig } from '../config/api';
 import './SongRecognition.css';
 
+// CryptoJS for signature generation (we'll use a simple implementation)
+const hmacSHA1 = (message, secret) => {
+  // Simple HMAC-SHA1 implementation for web
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+  
+  return crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  ).then(key => {
+    return crypto.subtle.sign('HMAC', key, messageData);
+  }).then(signature => {
+    return btoa(String.fromCharCode(...new Uint8Array(signature)));
+  });
+};
+
+const buildStringToSign = (method, uri, accessKey, dataType, signatureVersion, timestamp) => {
+  return [method, uri, accessKey, dataType, signatureVersion, timestamp].join('\n');
+};
+
 const SongRecognition = ({ onSongDetected }) => {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
@@ -15,20 +39,14 @@ const SongRecognition = ({ onSongDetected }) => {
 
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
-  const recognizerRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   useEffect(() => {
     // Check if Web Audio API is supported
     if (!window.AudioContext && !window.webkitAudioContext) {
       setIsSupported(false);
       setError('Web Audio API is not supported in this browser');
-      return;
-    }
-
-    // Check if ACRCloud SDK is loaded
-    if (!window.ACRCloudRecognizer) {
-      setIsSupported(false);
-      setError('ACRCloud SDK not loaded. Please check your internet connection.');
       return;
     }
 
@@ -47,8 +65,8 @@ const SongRecognition = ({ onSongDetected }) => {
       if (audioContext) {
         audioContext.close();
       }
-      if (recognizerRef.current) {
-        recognizerRef.current.stopRecognize();
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
       }
     };
   }, [mediaStream, audioContext]);
@@ -59,6 +77,7 @@ const SongRecognition = ({ onSongDetected }) => {
       setIsListening(true);
       setIsRecognizing(false);
       setRecognitionProgress(0);
+      audioChunksRef.current = [];
 
       // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -89,8 +108,8 @@ const SongRecognition = ({ onSongDetected }) => {
       // Start visualization
       visualize();
 
-      // Start ACRCloud recognition
-      startAcrCloudRecognition();
+      // Start recording for ACRCloud
+      startRecording(stream);
 
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -99,62 +118,111 @@ const SongRecognition = ({ onSongDetected }) => {
     }
   };
 
-  const startAcrCloudRecognition = () => {
+  const startRecording = (stream) => {
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'audio/webm;codecs=opus'
+    });
+    
+    mediaRecorderRef.current = mediaRecorder;
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunksRef.current.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+      await identifySong();
+    };
+
+    // Record for 8 seconds
+    mediaRecorder.start();
+    setTimeout(() => {
+      if (mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+    }, 8000);
+  };
+
+  const identifySong = async () => {
     try {
+      setIsRecognizing(true);
+      setRecognitionProgress(10);
+
       if (!isAcrCloudConfigured()) {
         throw new Error('ACRCloud not configured');
       }
 
       const config = getAcrCloudConfig();
-      recognizerRef.current = new window.ACRCloudRecognizer(config);
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      
+      setRecognitionProgress(30);
 
-      recognizerRef.current.startRecognize((result) => {
-        setIsRecognizing(false);
-        setIsListening(false);
-        setRecognitionProgress(100);
+      // Convert audio to base64
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      
+      setRecognitionProgress(50);
 
-        try {
-          const data = JSON.parse(result);
-          
-          if (data.status && data.status.code === 0 && 
-              data.metadata && data.metadata.music && 
-              data.metadata.music.length > 0) {
-            
-            const song = data.metadata.music[0];
-            onSongDetected({
-              title: song.title || 'Unknown Title',
-              artist: song.artists ? song.artists.map(a => a.name).join(', ') : 'Unknown Artist',
-              album: song.album ? song.album.name : 'Unknown Album',
-              confidence: song.score || 1,
-              acrcloud_id: song.acrid
-            });
-          } else {
-            setError('No song recognized. Please try again.');
-            simulateSongDetection();
-          }
-        } catch (e) {
-          console.error('Error parsing ACRCloud result:', e);
-          setError('Recognition failed. Using demo mode.');
-          simulateSongDetection();
-        }
+      // Prepare ACRCloud request
+      const timestamp = Math.floor(Date.now() / 1000);
+      const stringToSign = buildStringToSign(
+        'POST',
+        '/v1/identify',
+        config.access_key,
+        'audio',
+        '1',
+        timestamp
+      );
+
+      const signature = await hmacSHA1(stringToSign, config.access_secret);
+      
+      setRecognitionProgress(70);
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('sample', audioBlob, 'sample.webm');
+      formData.append('access_key', config.access_key);
+      formData.append('data_type', 'audio');
+      formData.append('signature_version', '1');
+      formData.append('signature', signature);
+      formData.append('sample_bytes', audioBlob.size);
+      formData.append('timestamp', timestamp);
+
+      setRecognitionProgress(85);
+
+      // Make API request
+      const response = await fetch(`https://${config.host}/v1/identify`, {
+        method: 'POST',
+        body: formData
       });
 
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setRecognitionProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 500);
+      const result = await response.json();
+      
+      setRecognitionProgress(100);
+      setIsRecognizing(false);
+      setIsListening(false);
 
-      setIsRecognizing(true);
+      if (result.status && result.status.code === 0 && 
+          result.metadata && result.metadata.music && 
+          result.metadata.music.length > 0) {
+        
+        const song = result.metadata.music[0];
+        onSongDetected({
+          title: song.title || 'Unknown Title',
+          artist: song.artists ? song.artists.map(a => a.name).join(', ') : 'Unknown Artist',
+          album: song.album ? song.album.name : 'Unknown Album',
+          confidence: song.score || 1,
+          acrcloud_id: song.acrid
+        });
+      } else {
+        setError('No song recognized. Please try again.');
+        simulateSongDetection();
+      }
 
     } catch (err) {
-      console.error('Error starting ACRCloud recognition:', err);
-      setError('ACRCloud recognition failed. Using demo mode.');
+      console.error('Error identifying song:', err);
+      setError('Recognition failed. Using demo mode.');
       simulateSongDetection();
     }
   };
@@ -163,25 +231,21 @@ const SongRecognition = ({ onSongDetected }) => {
     setIsListening(false);
     setIsRecognizing(false);
     setRecognitionProgress(0);
-    
+
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-    
     if (mediaStream) {
       mediaStream.getTracks().forEach(track => track.stop());
       setMediaStream(null);
     }
-    
     if (audioContext) {
       audioContext.close();
       setAudioContext(null);
     }
-
-    if (recognizerRef.current) {
-      recognizerRef.current.stopRecognize();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
     }
-    
     setAnalyser(null);
     setAudioData(null);
   };
@@ -199,18 +263,7 @@ const SongRecognition = ({ onSongDetected }) => {
 
       analyser.getByteFrequencyData(dataArray);
 
-      // Calculate audio characteristics for song recognition
-      const average = dataArray.reduce((a, b) => a + b) / bufferLength;
-      const dominantFrequencies = getDominantFrequencies(dataArray);
-      
-      setAudioData({
-        average,
-        dominantFrequencies,
-        timestamp: Date.now()
-      });
-
-      // Visualize the audio
-      ctx.fillStyle = 'rgba(29, 185, 84, 0.1)';
+      ctx.fillStyle = 'rgba(18, 18, 18, 0.1)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const barWidth = (canvas.width / bufferLength) * 2.5;
@@ -229,6 +282,10 @@ const SongRecognition = ({ onSongDetected }) => {
 
         x += barWidth + 1;
       }
+
+      // Update audio data for display
+      const dominantFreqs = getDominantFrequencies(dataArray);
+      setAudioData(dominantFreqs);
     };
 
     draw();
@@ -236,25 +293,21 @@ const SongRecognition = ({ onSongDetected }) => {
 
   const getDominantFrequencies = (dataArray) => {
     const frequencies = [];
-    for (let i = 0; i < dataArray.length; i++) {
-      if (dataArray[i] > 128) { // Threshold for significant frequency
-        frequencies.push({
-          frequency: i * 22050 / dataArray.length, // Convert to Hz
-          amplitude: dataArray[i]
-        });
+    for (let i = 0; i < dataArray.length; i += 10) {
+      if (dataArray[i] > 128) {
+        frequencies.push(Math.round((i * 22050) / dataArray.length));
       }
     }
-    return frequencies.sort((a, b) => b.amplitude - a.amplitude).slice(0, 10);
+    return frequencies.slice(0, 5);
   };
 
   const simulateSongDetection = () => {
-    // Fallback simulation if ACRCloud fails
     const mockSongs = [
       { title: "O Meri Laila", artist: "Arijit Singh", confidence: 0.85 },
       { title: "Like That", artist: "Future & Kendrick Lamar", confidence: 0.72 },
       { title: "Unknown Song", artist: "Unknown Artist", confidence: 0.45 }
     ];
-
+    
     setTimeout(() => {
       const detectedSong = mockSongs[Math.floor(Math.random() * mockSongs.length)];
       onSongDetected(detectedSong);
@@ -267,8 +320,11 @@ const SongRecognition = ({ onSongDetected }) => {
 
   if (!isSupported) {
     return (
-      <div className="song-recognition-error">
-        <p>{error}</p>
+      <div className="song-recognition">
+        <div className="recognition-error">
+          <h3>❌ Not Supported</h3>
+          <p>{error}</p>
+        </div>
       </div>
     );
   }
@@ -287,17 +343,11 @@ const SongRecognition = ({ onSongDetected }) => {
 
       <div className="recognition-controls">
         {!isListening ? (
-          <button 
-            className="start-listening-btn"
-            onClick={handleStartListening}
-          >
+          <button className="start-listening-btn" onClick={handleStartListening}>
             🎵 Start Listening
           </button>
         ) : (
-          <button 
-            className="stop-listening-btn"
-            onClick={stopListening}
-          >
+          <button className="stop-listening-btn" onClick={stopListening}>
             ⏹️ Stop Listening
           </button>
         )}
@@ -305,22 +355,18 @@ const SongRecognition = ({ onSongDetected }) => {
 
       {error && (
         <div className="recognition-error">
+          <h3>⚠️ Error</h3>
           <p>{error}</p>
         </div>
       )}
 
       {isListening && (
         <div className="recognition-visualizer">
-          <canvas 
-            ref={canvasRef} 
-            width="300" 
-            height="100"
-            className="audio-visualizer"
-          />
+          <canvas ref={canvasRef} width="300" height="100" className="audio-visualizer" />
           <div className="listening-status">
             <div className="pulse-dot"></div>
             <span>
-              {isRecognizing 
+              {isRecognizing
                 ? `Recognizing song... ${recognitionProgress}%`
                 : 'Listening for music...'
               }
@@ -332,8 +378,8 @@ const SongRecognition = ({ onSongDetected }) => {
       {isRecognizing && (
         <div className="recognition-progress">
           <div className="progress-bar">
-            <div 
-              className="progress-fill" 
+            <div
+              className="progress-fill"
               style={{ width: `${recognitionProgress}%` }}
             ></div>
           </div>
@@ -342,8 +388,8 @@ const SongRecognition = ({ onSongDetected }) => {
 
       {audioData && (
         <div className="audio-info">
-          <p>Audio Level: {Math.round(audioData.average)}</p>
-          <p>Detected Frequencies: {audioData.dominantFrequencies.length}</p>
+          <h4>Audio Analysis</h4>
+          <p>Dominant Frequencies: {audioData.join(', ')} Hz</p>
         </div>
       )}
     </div>
