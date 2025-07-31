@@ -131,10 +131,11 @@ const SongRecognition = ({ onSongDetected }) => {
   };
 
   const startRecording = (stream) => {
-    // Try different audio formats for better compatibility
+    // Try different audio formats for better compatibility with ACRCloud
     const mimeTypes = [
       'audio/webm;codecs=opus',
       'audio/webm',
+      'audio/mp4;codecs=aac',
       'audio/mp4',
       'audio/wav'
     ];
@@ -149,13 +150,14 @@ const SongRecognition = ({ onSongDetected }) => {
 
     if (!selectedMimeType) {
       console.warn('No supported audio format found, using default');
+      selectedMimeType = 'audio/webm';
     }
 
     console.log('Using MIME type:', selectedMimeType);
 
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType: selectedMimeType,
-      audioBitsPerSecond: 64000 // Lower bitrate to reduce conflicts
+      audioBitsPerSecond: 128000 // Higher quality for better fingerprinting
     });
     
     mediaRecorderRef.current = mediaRecorder;
@@ -184,8 +186,8 @@ const SongRecognition = ({ onSongDetected }) => {
       console.log('Recording started');
     };
 
-    // Start recording with larger timeslices to reduce processing
-    mediaRecorder.start(500); // Collect data every 500ms
+    // Start recording with smaller timeslices for better data collection
+    mediaRecorder.start(100); // Collect data every 100ms
 
     // Start recording timer
     recordingTimerRef.current = setInterval(() => {
@@ -236,6 +238,11 @@ const SongRecognition = ({ onSongDetected }) => {
       
       if (audioBlob.size === 0) {
         throw new Error('Audio blob is empty');
+      }
+
+      // Check minimum size for ACRCloud (usually needs at least 1KB)
+      if (audioBlob.size < 1024) {
+        throw new Error('Audio file too small. Please record for longer or ensure audio is being captured.');
       }
       
       setRecognitionProgress(30);
@@ -305,7 +312,20 @@ const SongRecognition = ({ onSongDetected }) => {
         });
       } else {
         console.error('ACRCloud error:', result.status);
-        setError(`Recognition failed: ${result.status?.msg || 'Unknown error'}`);
+        
+        // Provide specific error messages based on error codes
+        let errorMessage = 'Recognition failed';
+        if (result.status?.code === 2004) {
+          errorMessage = 'Could not generate fingerprint. Please ensure audio is clear and contains music.';
+        } else if (result.status?.code === 2005) {
+          errorMessage = 'No music detected in the audio. Please try with clearer music.';
+        } else if (result.status?.code === 2006) {
+          errorMessage = 'Audio quality too low. Please try with better audio quality.';
+        } else if (result.status?.msg) {
+          errorMessage = `Recognition failed: ${result.status.msg}`;
+        }
+        
+        setError(errorMessage);
         simulateSongDetection();
       }
 
@@ -414,13 +434,34 @@ const SongRecognition = ({ onSongDetected }) => {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && file.type.startsWith('audio/')) {
-      console.log('Audio file selected:', file.name, file.size, 'bytes');
+      console.log('Audio file selected:', file.name, file.size, 'bytes', file.type);
+      
+      // Check file size
+      if (file.size < 1024) {
+        setError('Audio file too small. Please select a larger audio file.');
+        return;
+      }
+      
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit
+        setError('Audio file too large. Please select a smaller file (under 50MB).');
+        return;
+      }
+      
       audioChunksRef.current = [file];
       setRecordingTime(0);
-      identifySong();
+      setIsRecognizing(true);
+      setRecognitionProgress(10);
+      
+      // Process the uploaded file
+      setTimeout(() => {
+        identifySong();
+      }, 100);
     } else {
-      setError('Please select a valid audio file');
+      setError('Please select a valid audio file (MP3, WAV, M4A, etc.)');
     }
+    
+    // Reset file input
+    event.target.value = '';
   };
 
   const openFileUpload = () => {
@@ -460,6 +501,7 @@ const SongRecognition = ({ onSongDetected }) => {
           <li>Keep your device close to the music source</li>
           <li><strong>Mobile users:</strong> If music stops, try using headphones or external speakers</li>
           <li><strong>Mobile users:</strong> You can also try recording from another device while music plays on this one</li>
+          <li><strong>Debug:</strong> Check browser console (F12) for detailed logs</li>
         </ul>
       </div>
 
@@ -471,6 +513,17 @@ const SongRecognition = ({ onSongDetected }) => {
             </button>
             <button className="upload-btn" onClick={openFileUpload}>
               📁 Upload Audio File
+            </button>
+            <button className="test-btn" onClick={() => {
+              console.log('=== DEBUG INFO ===');
+              console.log('MediaRecorder supported:', typeof MediaRecorder !== 'undefined');
+              console.log('AudioContext supported:', typeof AudioContext !== 'undefined');
+              console.log('getUserMedia supported:', typeof navigator.mediaDevices?.getUserMedia !== 'undefined');
+              console.log('ACRCloud configured:', isAcrCloudConfigured());
+              console.log('Current audio chunks:', audioChunksRef.current.length);
+              console.log('==================');
+            }}>
+              🔧 Debug Info
             </button>
             <input
               ref={fileInputRef}

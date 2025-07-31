@@ -69,9 +69,17 @@
   box-shadow: 0 12px 32px rgba(102, 126, 234, 0.3);
 }
 
+.test-btn {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  box-shadow: 0 12px 32px rgba(240, 147, 251, 0.3);
+  font-size: 1rem;
+  padding: 15px 30px;
+}
+
 .start-listening-btn::before,
 .stop-listening-btn::before,
-.upload-btn::before {
+.upload-btn::before,
+.test-btn::before {
   content: '';
   position: absolute;
   top: 0;
@@ -84,7 +92,8 @@
 
 .start-listening-btn:hover,
 .stop-listening-btn:hover,
-.upload-btn:hover {
+.upload-btn:hover,
+.test-btn:hover {
   transform: translateY(-4px);
   box-shadow: 0 16px 40px rgba(29, 185, 84, 0.4);
 }
@@ -93,9 +102,14 @@
   box-shadow: 0 16px 40px rgba(102, 126, 234, 0.4);
 }
 
+.test-btn:hover {
+  box-shadow: 0 16px 40px rgba(240, 147, 251, 0.4);
+}
+
 .start-listening-btn:hover::before,
 .stop-listening-btn:hover::before,
-.upload-btn:hover::before {
+.upload-btn:hover::before,
+.test-btn:hover::before {
   left: 100%;
 }
 
