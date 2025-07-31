@@ -38,12 +38,14 @@ const SongRecognition = ({ onSongDetected }) => {
   const [recognitionProgress, setRecognitionProgress] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
   const [maxRecordingTime] = useState(30); // Increased to 30 seconds
+  const [showFileUpload, setShowFileUpload] = useState(false);
 
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     // Check if Web Audio API is supported
@@ -86,52 +88,20 @@ const SongRecognition = ({ onSongDetected }) => {
       setRecordingTime(0);
       audioChunksRef.current = [];
 
-      // Request microphone access with better settings
+      // Request microphone access with mobile-friendly settings
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true, // Enable echo cancellation
-          noiseSuppression: true, // Enable noise suppression
-          autoGainControl: true, // Enable auto gain control
+          echoCancellation: false, // Disable echo cancellation to avoid conflicts
+          noiseSuppression: false, // Disable noise suppression
+          autoGainControl: false, // Disable auto gain control
           sampleRate: 44100,
-          channelCount: 2, // Stereo recording
-          latency: 0.01, // Low latency
-          volume: 1.0 // Full volume
+          channelCount: 1, // Mono recording to reduce conflicts
+          latency: 0.1, // Higher latency to avoid audio session conflicts
+          volume: 0.5 // Lower volume to minimize interference
         }
       });
 
       setMediaStream(stream);
-
-      // Test audio levels to ensure microphone is working
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const analyser = audioContext.createAnalyser();
-      const source = audioContext.createMediaStreamSource(stream);
-      source.connect(analyser);
-      
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      let hasAudio = false;
-      
-      // Check for audio activity for 2 seconds
-      const audioCheck = setInterval(() => {
-        analyser.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        console.log('Audio level:', average);
-        
-        if (average > 10) {
-          hasAudio = true;
-          clearInterval(audioCheck);
-          console.log('Audio detected, starting recording...');
-          startRecording(stream);
-        }
-      }, 100);
-
-      // If no audio detected after 2 seconds, still start recording
-      setTimeout(() => {
-        if (!hasAudio) {
-          clearInterval(audioCheck);
-          console.log('No audio detected, but starting recording anyway...');
-          startRecording(stream);
-        }
-      }, 2000);
 
       // Create audio context for visualization
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -149,6 +119,9 @@ const SongRecognition = ({ onSongDetected }) => {
 
       // Start visualization
       visualize();
+
+      // Start recording immediately without audio level check
+      startRecording(stream);
 
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -182,7 +155,7 @@ const SongRecognition = ({ onSongDetected }) => {
 
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType: selectedMimeType,
-      audioBitsPerSecond: 128000 // Higher quality
+      audioBitsPerSecond: 64000 // Lower bitrate to reduce conflicts
     });
     
     mediaRecorderRef.current = mediaRecorder;
@@ -211,8 +184,8 @@ const SongRecognition = ({ onSongDetected }) => {
       console.log('Recording started');
     };
 
-    // Start recording with smaller timeslices for more frequent data
-    mediaRecorder.start(100); // Collect data every 100ms
+    // Start recording with larger timeslices to reduce processing
+    mediaRecorder.start(500); // Collect data every 500ms
 
     // Start recording timer
     recordingTimerRef.current = setInterval(() => {
@@ -438,6 +411,22 @@ const SongRecognition = ({ onSongDetected }) => {
     await startListening();
   };
 
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('audio/')) {
+      console.log('Audio file selected:', file.name, file.size, 'bytes');
+      audioChunksRef.current = [file];
+      setRecordingTime(0);
+      identifySong();
+    } else {
+      setError('Please select a valid audio file');
+    }
+  };
+
+  const openFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   if (!isSupported) {
     return (
       <div className="song-recognition">
@@ -469,14 +458,28 @@ const SongRecognition = ({ onSongDetected }) => {
           <li>Minimize background noise and echo</li>
           <li>Record for at least 10-15 seconds for best results</li>
           <li>Keep your device close to the music source</li>
+          <li><strong>Mobile users:</strong> If music stops, try using headphones or external speakers</li>
+          <li><strong>Mobile users:</strong> You can also try recording from another device while music plays on this one</li>
         </ul>
       </div>
 
       <div className="recognition-controls">
         {!isListening ? (
-          <button className="start-listening-btn" onClick={handleStartListening}>
-            🎵 Start Listening
-          </button>
+          <div className="control-buttons">
+            <button className="start-listening-btn" onClick={handleStartListening}>
+              🎵 Start Listening
+            </button>
+            <button className="upload-btn" onClick={openFileUpload}>
+              📁 Upload Audio File
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="audio/*"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+          </div>
         ) : (
           <button className="stop-listening-btn" onClick={stopListening}>
             ⏹️ Stop Listening
