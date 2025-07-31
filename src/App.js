@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAllSongs, getSongById } from './data/songs';
-import SongRecognition from './components/SongRecognition';
+import SpotifySongRecognition from './components/SpotifySongRecognition'; // New import
 import './App.css';
 
 function App() {
@@ -27,7 +27,6 @@ function App() {
     setIsPlaying(false);
     setCurrentLineIndex(0);
     setProgress(0);
-    setDetectedSong(null);
   };
 
   const togglePlay = () => {
@@ -37,17 +36,16 @@ function App() {
   const handleSongDetected = (song) => {
     setDetectedSong(song);
     setShowRecognition(false);
-    
-    // Try to find the detected song in our database
-    const foundSong = songs.find(s => 
+
+    // Try to find a matching song in our database
+    const foundSong = songs.find(s =>
       s.title.toLowerCase().includes(song.title.toLowerCase()) ||
       s.artist.toLowerCase().includes(song.artist.toLowerCase())
     );
-    
+
     if (foundSong) {
       setSelectedSong(foundSong);
     } else {
-      // Show a notification that the song wasn't found
       alert(`Song detected: ${song.title} by ${song.artist}\n\nThis song is not in our database yet.`);
     }
   };
@@ -65,9 +63,9 @@ function App() {
 
   useEffect(() => {
     if (isPlaying && selectedSong) {
-      const totalDuration = selectedSong.lyrics.length * 3000; // 3 seconds per line
-      const interval = 50; // Update every 50ms for smooth animation
-      
+      const totalDuration = selectedSong.lyrics.length * 3000;
+      const interval = 50;
+
       intervalRef.current = setInterval(() => {
         setProgress(prev => {
           const newProgress = prev + (interval / totalDuration) * 100;
@@ -77,11 +75,8 @@ function App() {
             setCurrentLineIndex(0);
             return 0;
           }
-          
-          // Calculate current line based on progress
           const lineIndex = Math.floor((newProgress / 100) * selectedSong.lyrics.length);
           setCurrentLineIndex(lineIndex);
-          
           return newProgress;
         });
       }, interval);
@@ -90,7 +85,6 @@ function App() {
         clearInterval(intervalRef.current);
       }
     }
-
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -105,20 +99,18 @@ function App() {
           <button className="back-button" onClick={handleBackToHome}>
             ← Back to Songs
           </button>
-          
           <div className="song-header">
             <h1>{selectedSong.title}</h1>
             <p className="artist">{selectedSong.artist}</p>
             <p className="album">{selectedSong.album} • {selectedSong.year}</p>
           </div>
-
           <div className="player-controls">
             <button className="play-button" onClick={togglePlay}>
               {isPlaying ? '⏸️' : '▶️'}
             </button>
             <div className="progress-bar">
-              <div 
-                className="progress-fill" 
+              <div
+                className="progress-fill"
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
@@ -126,11 +118,10 @@ function App() {
               {Math.floor(progress)}%
             </span>
           </div>
-
           <div className="lyrics-container" ref={lyricsContainerRef}>
             {selectedSong.lyrics.map((lyric, index) => (
-              <div 
-                key={index} 
+              <div
+                key={index}
                 ref={index === currentLineIndex ? activeLineRef : null}
                 className={`lyric-line ${index === currentLineIndex ? 'active' : ''} ${
                   index < currentLineIndex ? 'completed' : ''
@@ -153,24 +144,22 @@ function App() {
           <h1>Lyrics & Meanings</h1>
           <p>Discover the deeper meaning behind your favorite songs</p>
         </header>
-
         {showRecognition ? (
-          <SongRecognition onSongDetected={handleSongDetected} />
+          <SpotifySongRecognition onSongDetected={handleSongDetected} />
         ) : (
           <>
             <div className="recognition-section">
-              <button 
+              <button
                 className="recognize-song-btn"
                 onClick={() => setShowRecognition(true)}
               >
-                🎵 Recognize Current Song
+                🎵 Get Current Spotify Song
               </button>
             </div>
-            
             <div className="songs-grid">
               {songs.map((song) => (
-                <div 
-                  key={song.id} 
+                <div
+                  key={song.id}
                   className="song-card"
                   onClick={() => handleSongSelect(song)}
                 >

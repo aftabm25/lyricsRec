@@ -86,70 +86,52 @@ const SongRecognition = ({ onSongDetected }) => {
       setRecordingTime(0);
       audioChunksRef.current = [];
 
-      // Check if we're on mobile
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      let stream;
-      let audioSource = 'microphone';
-
-      // Try different audio capture methods based on browser support
-      if (!isMobile && navigator.mediaDevices.getDisplayMedia) {
-        // Try system audio capture first (desktop browsers)
-        try {
-          console.log('Attempting system audio capture...');
-          stream = await navigator.mediaDevices.getDisplayMedia({
-            video: false,
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
-              sampleRate: 44100
-            }
-          });
-          audioSource = 'system';
-          console.log('System audio capture successful');
-        } catch (displayError) {
-          console.log('System audio capture failed, falling back to microphone:', displayError.message);
-          // Fallback to microphone
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
-              sampleRate: 44100,
-              channelCount: 1,
-              latency: 0.1,
-              volume: 0.5
-            }
-          });
-          audioSource = 'microphone';
-        }
-      } else {
-        // Mobile or browsers without getDisplayMedia - use microphone with mobile-optimized settings
-        const audioConstraints = {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
+      // Request microphone access with better settings
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true, // Enable echo cancellation
+          noiseSuppression: true, // Enable noise suppression
+          autoGainControl: true, // Enable auto gain control
           sampleRate: 44100,
-          channelCount: 1,
-          latency: 0.1,
-          volume: 0.5
-        };
-
-        if (isMobile) {
-          audioConstraints.latency = 0.2;
-          audioConstraints.volume = 0.3;
-          console.log('Using mobile-optimized microphone settings');
+          channelCount: 2, // Stereo recording
+          latency: 0.01, // Low latency
+          volume: 1.0 // Full volume
         }
-
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: audioConstraints
-        });
-        audioSource = 'microphone';
-      }
+      });
 
       setMediaStream(stream);
-      console.log(`Audio source: ${audioSource}`);
+
+      // Test audio levels to ensure microphone is working
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let hasAudio = false;
+      
+      // Check for audio activity for 2 seconds
+      const audioCheck = setInterval(() => {
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        console.log('Audio level:', average);
+        
+        if (average > 10) {
+          hasAudio = true;
+          clearInterval(audioCheck);
+          console.log('Audio detected, starting recording...');
+          startRecording(stream);
+        }
+      }, 100);
+
+      // If no audio detected after 2 seconds, still start recording
+      setTimeout(() => {
+        if (!hasAudio) {
+          clearInterval(audioCheck);
+          console.log('No audio detected, but starting recording anyway...');
+          startRecording(stream);
+        }
+      }, 2000);
 
       // Create audio context for visualization
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -168,19 +150,14 @@ const SongRecognition = ({ onSongDetected }) => {
       // Start visualization
       visualize();
 
-      // Start recording
-      startRecording(stream, audioSource);
-
     } catch (err) {
-      console.error('Error accessing audio:', err);
-      setError(`Unable to access audio: ${err.message}`);
+      console.error('Error accessing microphone:', err);
+      setError('Unable to access microphone. Please check permissions.');
       setIsListening(false);
     }
   };
 
-  const startRecording = (stream, audioSource) => {
-    console.log(`Starting recording with audio source: ${audioSource}`);
-    
+  const startRecording = (stream) => {
     // Try different audio formats for better compatibility
     const mimeTypes = [
       'audio/webm;codecs=opus',
@@ -199,7 +176,6 @@ const SongRecognition = ({ onSongDetected }) => {
 
     if (!selectedMimeType) {
       console.warn('No supported audio format found, using default');
-      selectedMimeType = 'audio/webm';
     }
 
     console.log('Using MIME type:', selectedMimeType);
@@ -223,11 +199,7 @@ const SongRecognition = ({ onSongDetected }) => {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
-      
-      // Wait a moment for all data to be processed
-      setTimeout(async () => {
-        await identifySong();
-      }, 500);
+      await identifySong();
     };
 
     mediaRecorder.onerror = (event) => {
@@ -236,7 +208,7 @@ const SongRecognition = ({ onSongDetected }) => {
     };
 
     mediaRecorder.onstart = () => {
-      console.log(`Recording started with ${audioSource} audio`);
+      console.log('Recording started');
     };
 
     // Start recording with smaller timeslices for more frequent data
@@ -497,15 +469,6 @@ const SongRecognition = ({ onSongDetected }) => {
           <li>Minimize background noise and echo</li>
           <li>Record for at least 10-15 seconds for best results</li>
           <li>Keep your device close to the music source</li>
-          {/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? (
-            <li style={{ color: '#ffa500', fontWeight: 'bold' }}>
-              📱 Mobile: If background music stops, try pausing and resuming your music app after starting recording
-            </li>
-          ) : (
-            <li style={{ color: '#1db954', fontWeight: 'bold' }}>
-              🖥️ Desktop: System audio capture will be attempted first for better quality
-            </li>
-          )}
         </ul>
       </div>
 

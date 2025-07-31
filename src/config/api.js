@@ -18,15 +18,42 @@ export const ACRCLOUD_CONFIG = {
   }
 };
 
+// Spotify API Configuration
+// Get your free API credentials from: https://developer.spotify.com/
+//
+// Steps to get Spotify API credentials:
+// 1. Go to https://developer.spotify.com/dashboard
+// 2. Log in with your Spotify account
+// 3. Create a new app
+// 4. Note your Client ID and Client Secret
+// 5. Add your redirect URI (e.g., http://localhost:3000/callback for development)
+
+export const SPOTIFY_CONFIG = {
+  CLIENT_ID: 'YOUR_SPOTIFY_CLIENT_ID', // Replace with your Spotify Client ID
+  CLIENT_SECRET: 'YOUR_SPOTIFY_CLIENT_SECRET', // Replace with your Spotify Client Secret
+  REDIRECT_URI: 'http://localhost:3000/callback', // For development
+  // REDIRECT_URI: 'https://your-vercel-app.vercel.app/callback', // For production
+  SCOPES: [
+    'user-read-currently-playing',
+    'user-read-playback-state',
+    'user-read-recently-played'
+  ].join(' ')
+};
+
 // Alternative free music recognition APIs:
 // 1. ACRCloud (https://www.acrcloud.com/) - 1000 free requests/month ✅ CURRENT
-// 2. AudD (https://audd.io/) - 100 free requests/month
-// 3. AudD.io (https://audd.io/) - 100 free requests/month
+// 2. Spotify API (https://developer.spotify.com/) - Free tier available ✅ NEW
+// 3. AudD (https://audd.io/) - 100 free requests/month
 
 export const isAcrCloudConfigured = () => {
   return ACRCLOUD_CONFIG.HOST !== 'YOUR_HOST' && 
          ACRCLOUD_CONFIG.ACCESS_KEY !== 'YOUR_ACCESS_KEY' && 
          ACRCLOUD_CONFIG.ACCESS_SECRET !== 'YOUR_ACCESS_SECRET';
+};
+
+export const isSpotifyConfigured = () => {
+  return SPOTIFY_CONFIG.CLIENT_ID !== 'YOUR_SPOTIFY_CLIENT_ID' && 
+         SPOTIFY_CONFIG.CLIENT_SECRET !== 'YOUR_SPOTIFY_CLIENT_SECRET';
 };
 
 export const getAcrCloudConfig = () => {
@@ -35,4 +62,8 @@ export const getAcrCloudConfig = () => {
     access_key: ACRCLOUD_CONFIG.ACCESS_KEY,
     access_secret: ACRCLOUD_CONFIG.ACCESS_SECRET
   };
+};
+
+export const getSpotifyConfig = () => {
+  return SPOTIFY_CONFIG;
 }; 
