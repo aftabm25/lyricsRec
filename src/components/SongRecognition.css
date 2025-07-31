@@ -1,35 +1,40 @@
+/* Song Recognition Component Styles */
 .song-recognition {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
-  padding: 32px;
-  margin: 24px 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .recognition-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
 }
 
 .recognition-header h2 {
-  font-size: 1.8rem;
-  font-weight: 700;
   color: #ffffff;
-  margin-bottom: 8px;
-  letter-spacing: -0.01em;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .recognition-header p {
   color: #b3b3b3;
-  font-size: 1rem;
-  font-weight: 400;
+  font-size: 1.1rem;
+  line-height: 1.5;
 }
 
 .recognition-controls {
   display: flex;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
 }
 
 .start-listening-btn,
@@ -37,67 +42,95 @@
   background: linear-gradient(135deg, #1db954, #1ed760);
   border: none;
   border-radius: 50px;
-  padding: 16px 32px;
-  font-size: 1.1rem;
-  font-weight: 600;
+  padding: 20px 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
   color: #ffffff;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 8px 24px rgba(29, 185, 84, 0.3);
-  min-width: 200px;
+  box-shadow: 0 12px 32px rgba(29, 185, 84, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
 }
 
-.start-listening-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(29, 185, 84, 0.4);
+.start-listening-btn::before,
+.stop-listening-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.start-listening-btn:hover,
+.stop-listening-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(29, 185, 84, 0.4);
+}
+
+.start-listening-btn:hover::before,
+.stop-listening-btn:hover::before {
+  left: 100%;
 }
 
 .stop-listening-btn {
   background: linear-gradient(135deg, #e74c3c, #c0392b);
-  box-shadow: 0 8px 24px rgba(231, 76, 60, 0.3);
+  box-shadow: 0 12px 32px rgba(231, 76, 60, 0.3);
 }
 
 .stop-listening-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(231, 76, 60, 0.4);
+  box-shadow: 0 16px 40px rgba(231, 76, 60, 0.4);
 }
 
 .recognition-error {
   background: rgba(231, 76, 60, 0.1);
   border: 1px solid rgba(231, 76, 60, 0.3);
   border-radius: 12px;
-  padding: 16px;
-  margin: 16px 0;
+  padding: 20px;
+  margin: 20px 0;
   text-align: center;
 }
 
-.recognition-error p {
+.recognition-error h3 {
   color: #e74c3c;
-  font-weight: 500;
-  margin: 0;
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.recognition-error p {
+  color: #b3b3b3;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .recognition-visualizer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  margin: 24px 0;
+  margin: 30px 0;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
 }
 
 .audio-visualizer {
-  border-radius: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .listening-status {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #1db954;
+  color: #ffffff;
+  font-size: 1.1rem;
   font-weight: 600;
-  font-size: 1rem;
 }
 
 .pulse-dot {
@@ -160,56 +193,108 @@
 }
 
 @keyframes progressPulse {
-  0% {
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
-  }
-  100% {
-    box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
-  }
+  0% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.8); }
+  100% { box-shadow: 0 0 12px rgba(255, 255, 255, 0.5); }
 }
 
 .audio-info {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 12px;
-  padding: 16px;
-  margin-top: 16px;
+  padding: 20px;
+  margin-top: 20px;
   text-align: center;
+}
+
+.audio-info h4 {
+  color: #1db954;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
 }
 
 .audio-info p {
   color: #b3b3b3;
-  margin: 4px 0;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
+/* Recording Tips */
+.recording-tips {
+  background: rgba(29, 185, 84, 0.1);
+  border: 1px solid rgba(29, 185, 84, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.recording-tips h4 {
+  color: #1db954;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recording-tips ul {
+  color: #b3b3b3;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding-left: 20px;
+}
+
+.recording-tips li {
+  margin-bottom: 8px;
+}
+
+/* Recording Timer */
+.recording-timer {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 20px;
+  margin: 15px 0;
+  text-align: center;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+.recording-timer .time {
+  color: #1db954;
+  font-size: 1.2rem;
+}
+
+.recording-timer .max-time {
+  color: #b3b3b3;
+  font-size: 0.9rem;
 }
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .song-recognition {
-    padding: 24px;
-    margin: 16px 0;
+    padding: 15px;
+    margin: 10px;
   }
-  
+
   .recognition-header h2 {
     font-size: 1.5rem;
   }
-  
+
+  .recognition-header p {
+    font-size: 1rem;
+  }
+
   .start-listening-btn,
   .stop-listening-btn {
-    padding: 14px 24px;
+    padding: 15px 30px;
     font-size: 1rem;
-    min-width: 160px;
   }
-  
+
   .audio-visualizer {
-    width: 280px;
+    width: 250px;
     height: 80px;
   }
-  
-  .recognition-progress {
-    padding: 0 10px;
+
+  .listening-status {
+    font-size: 1rem;
   }
 } 

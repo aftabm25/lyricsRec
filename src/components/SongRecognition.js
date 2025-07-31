@@ -36,11 +36,14 @@ const SongRecognition = ({ onSongDetected }) => {
   const [audioData, setAudioData] = useState(null);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [recognitionProgress, setRecognitionProgress] = useState(0);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [maxRecordingTime] = useState(30); // Increased to 30 seconds
 
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
 
   useEffect(() => {
     // Check if Web Audio API is supported
@@ -68,6 +71,9 @@ const SongRecognition = ({ onSongDetected }) => {
       if (mediaRecorderRef.current) {
         mediaRecorderRef.current.stop();
       }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
     };
   }, [mediaStream, audioContext]);
 
@@ -77,15 +83,19 @@ const SongRecognition = ({ onSongDetected }) => {
       setIsListening(true);
       setIsRecognizing(false);
       setRecognitionProgress(0);
+      setRecordingTime(0);
       audioChunksRef.current = [];
 
-      // Request microphone access
+      // Request microphone access with better settings
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: false,
-          sampleRate: 44100
+          echoCancellation: true, // Enable echo cancellation
+          noiseSuppression: true, // Enable noise suppression
+          autoGainControl: true, // Enable auto gain control
+          sampleRate: 44100,
+          channelCount: 2, // Stereo recording
+          latency: 0.01, // Low latency
+          volume: 1.0 // Full volume
         }
       });
 
@@ -119,8 +129,29 @@ const SongRecognition = ({ onSongDetected }) => {
   };
 
   const startRecording = (stream) => {
+    // Try different audio formats for better compatibility
+    const mimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4',
+      'audio/wav'
+    ];
+
+    let selectedMimeType = null;
+    for (const mimeType of mimeTypes) {
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        selectedMimeType = mimeType;
+        break;
+      }
+    }
+
+    if (!selectedMimeType) {
+      console.warn('No supported audio format found, using default');
+    }
+
     const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'audio/webm;codecs=opus'
+      mimeType: selectedMimeType,
+      audioBitsPerSecond: 128000 // Higher quality
     });
     
     mediaRecorderRef.current = mediaRecorder;
@@ -132,16 +163,35 @@ const SongRecognition = ({ onSongDetected }) => {
     };
 
     mediaRecorder.onstop = async () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
       await identifySong();
     };
 
-    // Record for 8 seconds
-    mediaRecorder.start();
+    // Start recording
+    mediaRecorder.start(1000); // Collect data every second
+
+    // Start recording timer
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingTime(prev => {
+        const newTime = prev + 1;
+        if (newTime >= maxRecordingTime) {
+          if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
+          return maxRecordingTime;
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    // Auto-stop after max time
     setTimeout(() => {
       if (mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
       }
-    }, 8000);
+    }, maxRecordingTime * 1000);
   };
 
   const identifySong = async () => {
@@ -156,13 +206,10 @@ const SongRecognition = ({ onSongDetected }) => {
       const config = getAcrCloudConfig();
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
       
-      setRecognitionProgress(30);
-
-      // Convert audio to base64
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64Audio = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      console.log('Audio blob size:', audioBlob.size, 'bytes');
+      console.log('Recording duration:', recordingTime, 'seconds');
       
-      setRecognitionProgress(50);
+      setRecognitionProgress(30);
 
       // Prepare ACRCloud request
       const timestamp = Math.floor(Date.now() / 1000);
@@ -177,7 +224,7 @@ const SongRecognition = ({ onSongDetected }) => {
 
       const signature = await hmacSHA1(stringToSign, config.access_secret);
       
-      setRecognitionProgress(70);
+      setRecognitionProgress(50);
 
       // Create form data
       const formData = new FormData();
@@ -189,7 +236,7 @@ const SongRecognition = ({ onSongDetected }) => {
       formData.append('sample_bytes', audioBlob.size);
       formData.append('timestamp', timestamp);
 
-      setRecognitionProgress(85);
+      setRecognitionProgress(70);
 
       // Make API request
       const response = await fetch(`https://${config.host}/v1/identify`, {
@@ -198,6 +245,8 @@ const SongRecognition = ({ onSongDetected }) => {
       });
 
       const result = await response.json();
+      
+      console.log('ACRCloud response:', result);
       
       setRecognitionProgress(100);
       setIsRecognizing(false);
@@ -216,7 +265,7 @@ const SongRecognition = ({ onSongDetected }) => {
           acrcloud_id: song.acrid
         });
       } else {
-        setError('No song recognized. Please try again.');
+        setError('No song recognized. Please try again with clearer audio.');
         simulateSongDetection();
       }
 
@@ -231,6 +280,7 @@ const SongRecognition = ({ onSongDetected }) => {
     setIsListening(false);
     setIsRecognizing(false);
     setRecognitionProgress(0);
+    setRecordingTime(0);
 
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
@@ -245,6 +295,9 @@ const SongRecognition = ({ onSongDetected }) => {
     }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
+    }
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
     }
     setAnalyser(null);
     setAudioData(null);
@@ -341,6 +394,17 @@ const SongRecognition = ({ onSongDetected }) => {
         )}
       </div>
 
+      <div className="recording-tips">
+        <h4>🎵 Tips for Better Recognition</h4>
+        <ul>
+          <li>Play music at a good volume (not too loud, not too quiet)</li>
+          <li>Ensure the song has vocals or distinctive melody</li>
+          <li>Minimize background noise and echo</li>
+          <li>Record for at least 10-15 seconds for best results</li>
+          <li>Keep your device close to the music source</li>
+        </ul>
+      </div>
+
       <div className="recognition-controls">
         {!isListening ? (
           <button className="start-listening-btn" onClick={handleStartListening}>
@@ -368,7 +432,7 @@ const SongRecognition = ({ onSongDetected }) => {
             <span>
               {isRecognizing
                 ? `Recognizing song... ${recognitionProgress}%`
-                : 'Listening for music...'
+                : `Recording... ${recordingTime}s / ${maxRecordingTime}s`
               }
             </span>
           </div>
