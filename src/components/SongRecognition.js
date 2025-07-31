@@ -101,6 +101,38 @@ const SongRecognition = ({ onSongDetected }) => {
 
       setMediaStream(stream);
 
+      // Test audio levels to ensure microphone is working
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      let hasAudio = false;
+      
+      // Check for audio activity for 2 seconds
+      const audioCheck = setInterval(() => {
+        analyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        console.log('Audio level:', average);
+        
+        if (average > 10) {
+          hasAudio = true;
+          clearInterval(audioCheck);
+          console.log('Audio detected, starting recording...');
+          startRecording(stream);
+        }
+      }, 100);
+
+      // If no audio detected after 2 seconds, still start recording
+      setTimeout(() => {
+        if (!hasAudio) {
+          clearInterval(audioCheck);
+          console.log('No audio detected, but starting recording anyway...');
+          startRecording(stream);
+        }
+      }, 2000);
+
       // Create audio context for visualization
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       const context = new AudioContextClass();
@@ -112,14 +144,11 @@ const SongRecognition = ({ onSongDetected }) => {
       setAnalyser(analyserNode);
 
       // Connect audio source to analyser
-      const source = context.createMediaStreamSource(stream);
-      source.connect(analyserNode);
+      const sourceNode = context.createMediaStreamSource(stream);
+      sourceNode.connect(analyserNode);
 
       // Start visualization
       visualize();
-
-      // Start recording for ACRCloud
-      startRecording(stream);
 
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -149,6 +178,8 @@ const SongRecognition = ({ onSongDetected }) => {
       console.warn('No supported audio format found, using default');
     }
 
+    console.log('Using MIME type:', selectedMimeType);
+
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType: selectedMimeType,
       audioBitsPerSecond: 128000 // Higher quality
@@ -157,20 +188,31 @@ const SongRecognition = ({ onSongDetected }) => {
     mediaRecorderRef.current = mediaRecorder;
 
     mediaRecorder.ondataavailable = (event) => {
+      console.log('Data available:', event.data.size, 'bytes');
       if (event.data.size > 0) {
         audioChunksRef.current.push(event.data);
       }
     };
 
     mediaRecorder.onstop = async () => {
+      console.log('Recording stopped. Total chunks:', audioChunksRef.current.length);
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
       await identifySong();
     };
 
-    // Start recording
-    mediaRecorder.start(1000); // Collect data every second
+    mediaRecorder.onerror = (event) => {
+      console.error('MediaRecorder error:', event.error);
+      setError('Recording error: ' + event.error.message);
+    };
+
+    mediaRecorder.onstart = () => {
+      console.log('Recording started');
+    };
+
+    // Start recording with smaller timeslices for more frequent data
+    mediaRecorder.start(100); // Collect data every 100ms
 
     // Start recording timer
     recordingTimerRef.current = setInterval(() => {
@@ -204,10 +246,24 @@ const SongRecognition = ({ onSongDetected }) => {
       }
 
       const config = getAcrCloudConfig();
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      
+      // Check if we have audio data
+      if (audioChunksRef.current.length === 0) {
+        throw new Error('No audio data recorded');
+      }
+
+      // Create blob with proper MIME type
+      const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+      const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
       
       console.log('Audio blob size:', audioBlob.size, 'bytes');
       console.log('Recording duration:', recordingTime, 'seconds');
+      console.log('Audio chunks:', audioChunksRef.current.length);
+      console.log('MIME type:', mimeType);
+      
+      if (audioBlob.size === 0) {
+        throw new Error('Audio blob is empty');
+      }
       
       setRecognitionProgress(30);
 
@@ -235,6 +291,16 @@ const SongRecognition = ({ onSongDetected }) => {
       formData.append('signature', signature);
       formData.append('sample_bytes', audioBlob.size);
       formData.append('timestamp', timestamp);
+
+      // Log form data for debugging
+      console.log('Form data entries:');
+      for (let [key, value] of formData.entries()) {
+        if (key === 'sample') {
+          console.log(key, ':', value.name, value.type, value.size, 'bytes');
+        } else {
+          console.log(key, ':', value);
+        }
+      }
 
       setRecognitionProgress(70);
 
@@ -265,13 +331,14 @@ const SongRecognition = ({ onSongDetected }) => {
           acrcloud_id: song.acrid
         });
       } else {
-        setError('No song recognized. Please try again with clearer audio.');
+        console.error('ACRCloud error:', result.status);
+        setError(`Recognition failed: ${result.status?.msg || 'Unknown error'}`);
         simulateSongDetection();
       }
 
     } catch (err) {
       console.error('Error identifying song:', err);
-      setError('Recognition failed. Using demo mode.');
+      setError(`Recognition failed: ${err.message}`);
       simulateSongDetection();
     }
   };
