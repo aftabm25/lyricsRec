@@ -1,167 +1,168 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  createUserProfile, 
-  getUserProfile, 
-  updateUserProfile,
-  searchUsersByUsername,
-  sendFriendRequest,
-  getFriendsList,
-  getFriendRequests,
-  acceptFriendRequest,
-  rejectFriendRequest,
-  removeFriend,
-  updateSongCount
-} from '../services/userService';
+import { createUserProfile, getUserProfile, updateUserProfile, addFriend, removeFriend, getFriendsList } from '../config/firestore';
 import './UserProfile.css';
 
-const UserProfile = ({ spotifyUserId, spotifyProfile, onProfileUpdate }) => {
+const UserProfile = ({ spotifyUser, onProfileUpdate }) => {
   const [userProfile, setUserProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({});
-  const [friends, setFriends] = useState([]);
-  const [friendRequests, setFriendRequests] = useState([]);
-  const [searchUsername, setSearchUsername] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    username: '',
+    displayName: '',
+    bio: '',
+    isPublic: true
+  });
+  const [friends, setFriends] = useState([]);
+  const [newFriendUsername, setNewFriendUsername] = useState('');
+  const [isAddingFriend, setIsAddingFriend] = useState(false);
 
+  // Load user profile on component mount
   useEffect(() => {
-    if (spotifyUserId) {
+    if (spotifyUser && spotifyUser.id) {
       loadUserProfile();
+      loadFriendsList();
     }
-  }, [spotifyUserId]);
+  }, [spotifyUser]);
 
   const loadUserProfile = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      setIsLoading(true);
-      let profile = await getUserProfile(spotifyUserId);
+      const result = await getUserProfile(spotifyUser.id);
       
-      if (!profile) {
-        // Create new profile if doesn't exist
-        profile = await createUserProfile(spotifyUserId, spotifyProfile);
+      if (result.success) {
+        setUserProfile(result.user);
+        setFormData({
+          username: result.user.username || '',
+          displayName: result.user.displayName || spotifyUser.display_name || '',
+          bio: result.user.bio || '',
+          isPublic: result.user.isPublic !== false
+        });
+      } else {
+        // User doesn't exist, show registration form
+        setUserProfile(null);
+        setFormData({
+          username: '',
+          displayName: spotifyUser.display_name || '',
+          bio: '',
+          isPublic: true
+        });
       }
-      
-      setUserProfile(profile);
-      setEditForm({
-        displayName: profile.displayName,
-        username: profile.username
-      });
-      
-      // Load friends and requests
-      await loadFriends();
-      await loadFriendRequests();
-      
     } catch (error) {
-      console.error('Error loading user profile:', error);
-      setError('Failed to load profile');
+      setError('Failed to load user profile');
+      console.error('Error loading profile:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadFriends = async () => {
+  const loadFriendsList = async () => {
     try {
-      const friendsList = await getFriendsList(spotifyUserId);
-      setFriends(friendsList);
+      const result = await getFriendsList(spotifyUser.id);
+      if (result.success) {
+        setFriends(result.friends);
+      }
     } catch (error) {
       console.error('Error loading friends:', error);
     }
   };
 
-  const loadFriendRequests = async () => {
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const requests = await getFriendRequests(spotifyUserId);
-      setFriendRequests(requests);
+      const userData = {
+        spotifyId: spotifyUser.id,
+        spotifyEmail: spotifyUser.email,
+        spotifyDisplayName: spotifyUser.display_name,
+        spotifyImageUrl: spotifyUser.images?.[0]?.url,
+        ...formData
+      };
+
+      let result;
+      if (userProfile) {
+        // Update existing profile
+        result = await updateUserProfile(spotifyUser.id, userData);
+      } else {
+        // Create new profile
+        result = await createUserProfile(spotifyUser.id, userData);
+      }
+
+      if (result.success) {
+        setUserProfile(userData);
+        setIsEditing(false);
+        if (onProfileUpdate) {
+          onProfileUpdate(userData);
+        }
+      } else {
+        setError(result.error || 'Failed to save profile');
+      }
     } catch (error) {
-      console.error('Error loading friend requests:', error);
+      setError('Failed to save profile');
+      console.error('Error saving profile:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleSaveProfile = async () => {
+  const handleAddFriend = async (e) => {
+    e.preventDefault();
+    if (!newFriendUsername.trim()) return;
+
+    setIsAddingFriend(true);
+    setError(null);
+
     try {
-      await updateUserProfile(spotifyUserId, editForm);
-      await loadUserProfile();
-      setIsEditing(false);
-      setSuccess('Profile updated successfully!');
-      if (onProfileUpdate) onProfileUpdate();
+      const result = await addFriend(spotifyUser.id, newFriendUsername.trim());
+      
+      if (result.success) {
+        setNewFriendUsername('');
+        await loadFriendsList(); // Reload friends list
+      } else {
+        setError(result.error || 'Failed to add friend');
+      }
     } catch (error) {
-      setError('Failed to update profile');
+      setError('Failed to add friend');
+      console.error('Error adding friend:', error);
+    } finally {
+      setIsAddingFriend(false);
     }
   };
 
-  const handleSearchUsers = async () => {
-    if (!searchUsername.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
+  const handleRemoveFriend = async (friendId) => {
     try {
-      const results = await searchUsersByUsername(searchUsername);
-      // Filter out current user
-      const filteredResults = results.filter(user => user.spotifyUserId !== spotifyUserId);
-      setSearchResults(filteredResults);
-    } catch (error) {
-      setError('Failed to search users');
-    }
-  };
-
-  const handleSendFriendRequest = async (toUsername) => {
-    try {
-      await sendFriendRequest(spotifyUserId, toUsername);
-      setSuccess('Friend request sent!');
-      setSearchUsername('');
-      setSearchResults([]);
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const handleAcceptRequest = async (friendUserId) => {
-    try {
-      await acceptFriendRequest(spotifyUserId, friendUserId);
-      await loadFriends();
-      await loadFriendRequests();
-      setSuccess('Friend request accepted!');
-    } catch (error) {
-      setError('Failed to accept request');
-    }
-  };
-
-  const handleRejectRequest = async (friendUserId) => {
-    try {
-      await rejectFriendRequest(spotifyUserId, friendUserId);
-      await loadFriendRequests();
-      setSuccess('Friend request rejected');
-    } catch (error) {
-      setError('Failed to reject request');
-    }
-  };
-
-  const handleRemoveFriend = async (friendUserId) => {
-    try {
-      await removeFriend(spotifyUserId, friendUserId);
-      await loadFriends();
-      setSuccess('Friend removed');
+      const result = await removeFriend(spotifyUser.id, friendId);
+      
+      if (result.success) {
+        await loadFriendsList(); // Reload friends list
+      } else {
+        setError(result.error || 'Failed to remove friend');
+      }
     } catch (error) {
       setError('Failed to remove friend');
+      console.error('Error removing friend:', error);
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !userProfile) {
     return (
-      <div className="user-profile-loading">
-        <div className="loading-spinner"></div>
-        <p>Loading profile...</p>
-      </div>
-    );
-  }
-
-  if (!userProfile) {
-    return (
-      <div className="user-profile-error">
-        <p>Failed to load profile</p>
+      <div className="user-profile">
+        <div className="profile-loading">
+          <div className="loading-spinner"></div>
+          <p>Loading profile...</p>
+        </div>
       </div>
     );
   }
@@ -169,223 +170,183 @@ const UserProfile = ({ spotifyUserId, spotifyProfile, onProfileUpdate }) => {
   return (
     <div className="user-profile">
       <div className="profile-header">
-        <h2>👤 User Profile</h2>
-        <div className="profile-tabs">
+        <h3>👤 User Profile</h3>
+        {userProfile && !isEditing && (
           <button 
-            className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}
-            onClick={() => setActiveTab('profile')}
+            className="edit-profile-btn"
+            onClick={() => setIsEditing(true)}
           >
-            Profile
+            ✏️ Edit Profile
           </button>
-          <button 
-            className={`tab-btn ${activeTab === 'friends' ? 'active' : ''}`}
-            onClick={() => setActiveTab('friends')}
-          >
-            Friends ({friends.length})
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'requests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('requests')}
-          >
-            Requests ({friendRequests.length})
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'search' ? 'active' : ''}`}
-            onClick={() => setActiveTab('search')}
-          >
-            Find Friends
-          </button>
-        </div>
+        )}
       </div>
 
       {error && (
-        <div className="error-message">
-          <p>{error}</p>
+        <div className="profile-error">
+          <p>⚠️ {error}</p>
           <button onClick={() => setError(null)}>×</button>
         </div>
       )}
 
-      {success && (
-        <div className="success-message">
-          <p>{success}</p>
-          <button onClick={() => setSuccess(null)}>×</button>
-        </div>
-      )}
+      {!userProfile || isEditing ? (
+        <form className="profile-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="username">Username *</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              placeholder="Choose a unique username"
+              required
+              disabled={userProfile && userProfile.username} // Can't change username once set
+            />
+            {userProfile && userProfile.username && (
+              <small>Username cannot be changed once set</small>
+            )}
+          </div>
 
-      {activeTab === 'profile' && (
-        <div className="profile-content">
+          <div className="form-group">
+            <label htmlFor="displayName">Display Name</label>
+            <input
+              type="text"
+              id="displayName"
+              name="displayName"
+              value={formData.displayName}
+              onChange={handleInputChange}
+              placeholder="Your display name"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="bio">Bio</label>
+            <textarea
+              id="bio"
+              name="bio"
+              value={formData.bio}
+              onChange={handleInputChange}
+              placeholder="Tell us about yourself..."
+              rows="3"
+            />
+          </div>
+
+          <div className="form-group checkbox-group">
+            <label>
+              <input
+                type="checkbox"
+                name="isPublic"
+                checked={formData.isPublic}
+                onChange={handleInputChange}
+              />
+              Make profile public (friends can see your song history)
+            </label>
+          </div>
+
+          <div className="form-actions">
+            <button 
+              type="submit" 
+              className="save-profile-btn"
+              disabled={isLoading}
+            >
+              {isLoading ? '💾 Saving...' : userProfile ? '💾 Update Profile' : '💾 Create Profile'}
+            </button>
+            
+            {isEditing && (
+              <button 
+                type="button" 
+                className="cancel-btn"
+                onClick={() => {
+                  setIsEditing(false);
+                  setFormData({
+                    username: userProfile.username || '',
+                    displayName: userProfile.displayName || '',
+                    bio: userProfile.bio || '',
+                    isPublic: userProfile.isPublic !== false
+                  });
+                }}
+              >
+                ❌ Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      ) : (
+        <div className="profile-display">
           <div className="profile-info">
-            <div className="profile-image">
-              {userProfile.profileImage ? (
-                <img src={userProfile.profileImage} alt="Profile" />
+            <div className="profile-avatar">
+              {userProfile.spotifyImageUrl ? (
+                <img src={userProfile.spotifyImageUrl} alt="Profile" />
               ) : (
-                <div className="profile-placeholder">👤</div>
+                <div className="avatar-placeholder">
+                  {userProfile.displayName?.charAt(0) || 'U'}
+                </div>
               )}
             </div>
             
-            {isEditing ? (
-              <div className="edit-form">
-                <div className="form-group">
-                  <label>Display Name:</label>
-                  <input
-                    type="text"
-                    value={editForm.displayName}
-                    onChange={(e) => setEditForm({...editForm, displayName: e.target.value})}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Username:</label>
-                  <input
-                    type="text"
-                    value={editForm.username}
-                    onChange={(e) => setEditForm({...editForm, username: e.target.value})}
-                  />
-                </div>
-                <div className="form-actions">
-                  <button onClick={handleSaveProfile} className="save-btn">Save</button>
-                  <button onClick={() => setIsEditing(false)} className="cancel-btn">Cancel</button>
-                </div>
-              </div>
-            ) : (
-              <div className="profile-details">
-                <h3>{userProfile.displayName}</h3>
-                <p className="username">@{userProfile.username}</p>
-                <p className="email">{userProfile.email}</p>
-                <p className="member-since">
-                  Member since: {new Date(userProfile.createdAt).toLocaleDateString()}
-                </p>
-                <button onClick={() => setIsEditing(true)} className="edit-btn">
-                  ✏️ Edit Profile
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'friends' && (
-        <div className="friends-content">
-          {friends.length === 0 ? (
-            <div className="empty-state">
-              <p>No friends yet. Start by finding friends!</p>
+            <div className="profile-details">
+              <h4>{userProfile.displayName || userProfile.spotifyDisplayName}</h4>
+              <p className="username">@{userProfile.username}</p>
+              {userProfile.bio && <p className="bio">{userProfile.bio}</p>}
+              <p className="privacy-status">
+                {userProfile.isPublic ? '🌐 Public Profile' : '🔒 Private Profile'}
+              </p>
             </div>
-          ) : (
+          </div>
+
+          {/* Friends Section */}
+          <div className="friends-section">
+            <h4>👥 Friends ({friends.length})</h4>
+            
+            <form className="add-friend-form" onSubmit={handleAddFriend}>
+              <input
+                type="text"
+                value={newFriendUsername}
+                onChange={(e) => setNewFriendUsername(e.target.value)}
+                placeholder="Enter friend's username"
+                disabled={isAddingFriend}
+              />
+              <button 
+                type="submit" 
+                disabled={isAddingFriend || !newFriendUsername.trim()}
+              >
+                {isAddingFriend ? '➕ Adding...' : '➕ Add Friend'}
+              </button>
+            </form>
+
             <div className="friends-list">
-              {friends.map((friend) => (
-                <div key={friend.id} className="friend-item">
-                  <div className="friend-info">
-                    <div className="friend-image">
-                      {friend.profileImage ? (
-                        <img src={friend.profileImage} alt={friend.displayName} />
-                      ) : (
-                        <div className="friend-placeholder">👤</div>
-                      )}
+              {friends.length === 0 ? (
+                <p className="no-friends">No friends yet. Add some friends to see their song histories!</p>
+              ) : (
+                friends.map(friend => (
+                  <div key={friend.id} className="friend-item">
+                    <div className="friend-info">
+                      <div className="friend-avatar">
+                        {friend.spotifyImageUrl ? (
+                          <img src={friend.spotifyImageUrl} alt={friend.displayName} />
+                        ) : (
+                          <div className="avatar-placeholder">
+                            {friend.displayName?.charAt(0) || 'F'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="friend-details">
+                        <h5>{friend.displayName}</h5>
+                        <p>@{friend.username}</p>
+                      </div>
                     </div>
-                    <div className="friend-details">
-                      <h4>{friend.displayName}</h4>
-                      <p>@{friend.username}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleRemoveFriend(friend.spotifyUserId)}
-                    className="remove-friend-btn"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'requests' && (
-        <div className="requests-content">
-          {friendRequests.length === 0 ? (
-            <div className="empty-state">
-              <p>No pending friend requests</p>
-            </div>
-          ) : (
-            <div className="requests-list">
-              {friendRequests.map((request) => (
-                <div key={request.id} className="request-item">
-                  <div className="request-info">
-                    <div className="request-image">
-                      {request.profileImage ? (
-                        <img src={request.profileImage} alt={request.displayName} />
-                      ) : (
-                        <div className="request-placeholder">👤</div>
-                      )}
-                    </div>
-                    <div className="request-details">
-                      <h4>{request.displayName}</h4>
-                      <p>@{request.username}</p>
-                    </div>
-                  </div>
-                  <div className="request-actions">
                     <button 
-                      onClick={() => handleAcceptRequest(request.spotifyUserId)}
-                      className="accept-btn"
+                      className="remove-friend-btn"
+                      onClick={() => handleRemoveFriend(friend.id)}
+                      title="Remove friend"
                     >
-                      Accept
-                    </button>
-                    <button 
-                      onClick={() => handleRejectRequest(request.spotifyUserId)}
-                      className="reject-btn"
-                    >
-                      Reject
+                      ×
                     </button>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'search' && (
-        <div className="search-content">
-          <div className="search-form">
-            <input
-              type="text"
-              placeholder="Search by username..."
-              value={searchUsername}
-              onChange={(e) => setSearchUsername(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearchUsers()}
-            />
-            <button onClick={handleSearchUsers} className="search-btn">
-              🔍 Search
-            </button>
           </div>
-          
-          {searchResults.length > 0 && (
-            <div className="search-results">
-              <h3>Search Results</h3>
-              {searchResults.map((user) => (
-                <div key={user.id} className="search-result-item">
-                  <div className="result-info">
-                    <div className="result-image">
-                      {user.profileImage ? (
-                        <img src={user.profileImage} alt={user.displayName} />
-                      ) : (
-                        <div className="result-placeholder">👤</div>
-                      )}
-                    </div>
-                    <div className="result-details">
-                      <h4>{user.displayName}</h4>
-                      <p>@{user.username}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => handleSendFriendRequest(user.username)}
-                    className="add-friend-btn"
-                  >
-                    Add Friend
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>

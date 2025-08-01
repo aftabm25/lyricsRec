@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config/api';
 import './SpotifyProfile.css';
 
-const SpotifyProfile = ({ onOpenProfile }) => {
+const SpotifyProfile = ({ onShowProfile, onUserData }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,6 +42,9 @@ const SpotifyProfile = ({ onOpenProfile }) => {
       if (response.ok) {
         const data = await response.json();
         setUserProfile(data);
+        if (onUserData) {
+          onUserData(data);
+        }
       } else {
         throw new Error('Failed to fetch user profile');
       }
@@ -159,11 +162,11 @@ const SpotifyProfile = ({ onOpenProfile }) => {
                 <span className="user-email">{userProfile.email}</span>
               </div>
               <div className="profile-actions">
-                {onOpenProfile && (
+                {onShowProfile && (
                   <button 
-                    className="open-profile-btn" 
-                    onClick={() => onOpenProfile(userProfile)}
-                    title="Open User Profile"
+                    className="profile-btn" 
+                    onClick={onShowProfile}
+                    title="View Profile"
                   >
                     👤
                   </button>

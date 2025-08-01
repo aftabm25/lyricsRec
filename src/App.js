@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAllSongs, getSongById } from './data/songs';
 import SpotifySongRecognition from './components/SpotifySongRecognition';
-import SpotifyProfile from './components/SpotifyProfile'; // New import
+import SpotifyProfile from './components/SpotifyProfile';
 import UserProfile from './components/UserProfile';
 import './App.css';
 
@@ -13,7 +13,7 @@ function App() {
   const [detectedSong, setDetectedSong] = useState(null);
   const [showRecognition, setShowRecognition] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
-  const [spotifyUserData, setSpotifyUserData] = useState(null);
+  const [spotifyUser, setSpotifyUser] = useState(null);
   const songs = getAllSongs();
   const intervalRef = useRef(null);
   const activeLineRef = useRef(null);
@@ -78,9 +78,17 @@ function App() {
     setDetectedSong(null);
   };
 
-  const handleOpenUserProfile = (userData) => {
-    setSpotifyUserData(userData);
+  const handleShowUserProfile = () => {
     setShowUserProfile(true);
+    setShowRecognition(false);
+  };
+
+  const handleBackFromProfile = () => {
+    setShowUserProfile(false);
+  };
+
+  const handleProfileUpdate = (userData) => {
+    setSpotifyUser(userData);
   };
 
   // Auto-scroll to active line
@@ -133,7 +141,7 @@ function App() {
             <button className="back-button" onClick={handleBackToHome}>
               ← Back to Songs
             </button>
-            <SpotifyProfile />
+            <SpotifyProfile onShowProfile={handleShowUserProfile} onUserData={setSpotifyUser} />
           </div>
           <div className="song-header">
             <h1>{selectedSong.title}</h1>
@@ -183,7 +191,7 @@ function App() {
               <p>Discover the deeper meaning behind your favorite songs</p>
             </div>
             <div className="header-right">
-              <SpotifyProfile onOpenProfile={handleOpenUserProfile} />
+              <SpotifyProfile onShowProfile={handleShowUserProfile} onUserData={setSpotifyUser} />
             </div>
           </div>
         </header>
@@ -196,17 +204,14 @@ function App() {
           />
         ) : showUserProfile ? (
           <div className="user-profile-section">
-            <div className="section-header">
-              <button className="back-btn" onClick={() => setShowUserProfile(false)}>
+            <div className="profile-header">
+              <button className="back-button" onClick={handleBackFromProfile}>
                 ← Back to Home
               </button>
             </div>
             <UserProfile 
-              spotifyUserId={spotifyUserData?.id}
-              spotifyProfile={spotifyUserData}
-              onProfileUpdate={() => {
-                // Refresh any necessary data
-              }}
+              spotifyUser={spotifyUser} 
+              onProfileUpdate={handleProfileUpdate}
             />
           </div>
         ) : (

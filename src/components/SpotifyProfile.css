@@ -149,20 +149,24 @@
 
 .user-email {
   color: #b3b3b3;
-  font-size: 0.8rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
+/* Profile Actions */
 .profile-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.open-profile-btn {
+.profile-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
+  border-radius: 50%;
   width: 28px;
   height: 28px;
   display: flex;
@@ -172,11 +176,13 @@
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  opacity: 0.8;
 }
 
-.open-profile-btn:hover {
+.profile-btn:hover {
   background: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
+  opacity: 1;
   transform: scale(1.1);
 }
 
