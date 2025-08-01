@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config/api';
 import './SpotifySongRecognition.css';
 
@@ -7,6 +7,9 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
   const [error, setError] = useState(null);
   const [currentSong, setCurrentSong] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const pollingIntervalRef = useRef(null);
 
   useEffect(() => {
     // Check if Spotify is configured
@@ -22,6 +25,13 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
     } else {
       setError('Please connect to Spotify using the profile button in the header.');
     }
+
+    // Cleanup polling on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
   }, []);
 
   // Helper function to format time in MM:SS format
@@ -39,14 +49,21 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
     return Math.round((progressMs / durationMs) * 100);
   };
 
-  const getCurrentlyPlaying = async () => {
+  // Helper function to check if two songs are the same
+  const isSameSong = (song1, song2) => {
+    return song1 && song2 && song1.spotify_id === song2.spotify_id;
+  };
+
+  const getCurrentlyPlaying = async (isPolling = false) => {
     if (!accessToken) {
       setError('Please connect to Spotify using the profile button in the header.');
       return;
     }
 
     try {
-      setIsLoading(true);
+      if (!isPolling) {
+        setIsLoading(true);
+      }
       setError(null);
 
       const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
@@ -60,12 +77,22 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
         localStorage.removeItem('spotify_access_token');
         setAccessToken(null);
         setError('Spotify session expired. Please reconnect using the profile button in the header.');
+        stopMonitoring();
         return;
       }
 
       if (response.status === 204) {
         // No content - nothing is currently playing
-        setError('No song is currently playing on Spotify. Please start playing a song and try again.');
+        if (!isPolling) {
+          setError('No song is currently playing on Spotify. Please start playing a song and try again.');
+        }
+        if (isMonitoring) {
+          // Clear current song if nothing is playing
+          setCurrentSong(null);
+          if (detectedSong) {
+            onSongDetected(null);
+          }
+        }
         return;
       }
 
@@ -90,20 +117,59 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
           progress_percentage: calculateProgress(data.progress_ms || 0, data.item.duration_ms),
           // Add device info if available
           device_name: data.device?.name || 'Unknown Device',
-          device_type: data.device?.type || 'Unknown'
+          device_type: data.device?.type || 'Unknown',
+          // Add timestamp for tracking updates
+          timestamp: Date.now()
         };
         
-        setCurrentSong(song);
-        onSongDetected(song);
+        // Check if this is a new song or just a progress update
+        if (!isSameSong(currentSong, song)) {
+          // New song detected
+          setCurrentSong(song);
+          if (!isPolling) {
+            onSongDetected(song);
+          }
+        } else {
+          // Same song, just update progress
+          setCurrentSong(song);
+        }
+        
+        setLastUpdateTime(new Date().toLocaleTimeString());
       } else {
-        setError('No song is currently playing on Spotify.');
+        if (!isPolling) {
+          setError('No song is currently playing on Spotify.');
+        }
       }
     } catch (error) {
       console.error('Error getting currently playing:', error);
-      setError('Failed to get currently playing song. Please try again.');
+      if (!isPolling) {
+        setError('Failed to get currently playing song. Please try again.');
+      }
     } finally {
-      setIsLoading(false);
+      if (!isPolling) {
+        setIsLoading(false);
+      }
     }
+  };
+
+  const startMonitoring = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    
+    setIsMonitoring(true);
+    // Poll every 2 seconds for real-time updates
+    pollingIntervalRef.current = setInterval(() => {
+      getCurrentlyPlaying(true);
+    }, 2000);
+  };
+
+  const stopMonitoring = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    setIsMonitoring(false);
   };
 
   const handleViewSong = () => {
@@ -115,6 +181,18 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
   const handleTryAgain = () => {
     setCurrentSong(null);
     onSongDetected(null);
+    stopMonitoring();
+  };
+
+  const handleStartMonitoring = async () => {
+    await getCurrentlyPlaying();
+    if (currentSong) {
+      startMonitoring();
+    }
+  };
+
+  const handleStopMonitoring = () => {
+    stopMonitoring();
   };
 
   if (!isSpotifyConfigured()) {
@@ -159,6 +237,25 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
         <div className="song-detected-view">
           <div className="current-song-info">
             <h4>🎯 Song Detected!</h4>
+            
+            {/* Monitoring Status */}
+            <div className="monitoring-status">
+              {isMonitoring ? (
+                <div className="status-indicator monitoring">
+                  <span className="status-dot"></span>
+                  <span>🔄 Live Monitoring Active</span>
+                  {lastUpdateTime && (
+                    <span className="last-update">Last update: {lastUpdateTime}</span>
+                  )}
+                </div>
+              ) : (
+                <div className="status-indicator">
+                  <span className="status-dot"></span>
+                  <span>⏸️ Monitoring Paused</span>
+                </div>
+              )}
+            </div>
+
             <div className="song-details">
               <p className="song-title">{detectedSong.title}</p>
               <p className="song-artist">{detectedSong.artist}</p>
@@ -197,6 +294,17 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
               <button className="view-song-btn" onClick={handleViewSong}>
                 🎵 View Song & Lyrics
               </button>
+              
+              {isMonitoring ? (
+                <button className="stop-monitoring-btn" onClick={handleStopMonitoring}>
+                  ⏹️ Stop Live Monitoring
+                </button>
+              ) : (
+                <button className="start-monitoring-btn" onClick={handleStartMonitoring}>
+                  🔄 Start Live Monitoring
+                </button>
+              )}
+              
               <button className="try-again-btn" onClick={handleTryAgain}>
                 🔄 Try Another Song
               </button>
@@ -210,7 +318,7 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
         <div className="spotify-controls">
           <button 
             className="get-current-song-btn" 
-            onClick={getCurrentlyPlaying}
+            onClick={handleStartMonitoring}
             disabled={isLoading}
           >
             {isLoading ? '🔄 Getting Current Song...' : '🎵 Get Currently Playing Song'}
@@ -219,6 +327,25 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
           {currentSong && (
             <div className="current-song-info">
               <h4>Currently Playing:</h4>
+              
+              {/* Monitoring Status */}
+              <div className="monitoring-status">
+                {isMonitoring ? (
+                  <div className="status-indicator monitoring">
+                    <span className="status-dot"></span>
+                    <span>🔄 Live Monitoring Active</span>
+                    {lastUpdateTime && (
+                      <span className="last-update">Last update: {lastUpdateTime}</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="status-indicator">
+                    <span className="status-dot"></span>
+                    <span>⏸️ Monitoring Paused</span>
+                  </div>
+                )}
+              </div>
+
               <div className="song-details">
                 <p className="song-title">{currentSong.title}</p>
                 <p className="song-artist">{currentSong.artist}</p>
@@ -250,6 +377,19 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
                   <span className="device-name">📱 {currentSong.device_name}</span>
                   <span className="device-type">({currentSong.device_type})</span>
                 </div>
+              </div>
+
+              {/* Monitoring Controls */}
+              <div className="monitoring-controls">
+                {isMonitoring ? (
+                  <button className="stop-monitoring-btn" onClick={handleStopMonitoring}>
+                    ⏹️ Stop Live Monitoring
+                  </button>
+                ) : (
+                  <button className="start-monitoring-btn" onClick={startMonitoring}>
+                    🔄 Start Live Monitoring
+                  </button>
+                )}
               </div>
             </div>
           )}
