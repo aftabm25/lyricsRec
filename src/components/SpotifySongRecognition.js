@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config/api';
-import { saveSongToHistory, getUserSongHistory, clearUserSongHistory, removeSongFromHistory } from '../services/songStorageService';
 import './SpotifySongRecognition.css';
 
 const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBackToHome }) => {
@@ -325,70 +324,57 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
 
   // Load song history from localStorage on component mount
   useEffect(() => {
-    const loadHistory = async () => {
+    const savedHistory = localStorage.getItem('spotify_song_history');
+    if (savedHistory) {
       try {
-        // We need a user ID to load history - for now, use a default or get from Spotify user
-        const userId = 'default'; // This should come from the logged-in user
-        const result = await getUserSongHistory(userId);
-        if (result.success) {
-          setSongHistory(result.history);
-        }
+        setSongHistory(JSON.parse(savedHistory));
       } catch (error) {
         console.error('Error loading song history:', error);
         setSongHistory([]);
       }
-    };
-    loadHistory();
+    }
   }, []);
 
   // Save song history to localStorage whenever it changes
   useEffect(() => {
-    // Remove this effect as we'll save songs individually when they're detected
-    // The history is now managed by the song storage service
+    localStorage.setItem('spotify_song_history', JSON.stringify(songHistory));
   }, [songHistory]);
 
-  const addToHistory = async (song) => {
+  const addToHistory = (song) => {
     if (!song || !song.spotify_id) return;
 
-    try {
-      // We need a user ID to save history - for now, use a default or get from Spotify user
-      const userId = 'default'; // This should come from the logged-in user
-      const result = await saveSongToHistory(userId, song);
-      
-      if (result.success) {
-        // Reload the history to show the new song
-        const historyResult = await getUserSongHistory(userId);
-        if (historyResult.success) {
-          setSongHistory(historyResult.history);
-        }
+    const historyItem = {
+      ...song,
+      detectedAt: new Date().toISOString(),
+      id: `${song.spotify_id}_${Date.now()}`
+    };
+
+    setSongHistory(prevHistory => {
+      // Check if song already exists in history (within last 24 hours)
+      const existingIndex = prevHistory.findIndex(item => 
+        item.spotify_id === song.spotify_id && 
+        new Date(item.detectedAt) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+      );
+
+      if (existingIndex !== -1) {
+        // Update existing entry with new timestamp
+        const updatedHistory = [...prevHistory];
+        updatedHistory[existingIndex] = historyItem;
+        return updatedHistory;
+      } else {
+        // Add new entry to the beginning
+        return [historyItem, ...prevHistory];
       }
-    } catch (error) {
-      console.error('Error adding song to history:', error);
-    }
+    });
   };
 
-  const clearHistory = async () => {
-    try {
-      const userId = 'default'; // This should come from the logged-in user
-      const result = await clearUserSongHistory(userId);
-      if (result.success) {
-        setSongHistory([]);
-      }
-    } catch (error) {
-      console.error('Error clearing history:', error);
-    }
+  const clearHistory = () => {
+    setSongHistory([]);
+    localStorage.removeItem('spotify_song_history');
   };
 
-  const removeFromHistory = async (songId) => {
-    try {
-      const userId = 'default'; // This should come from the logged-in user
-      const result = await removeSongFromHistory(userId, songId);
-      if (result.success) {
-        setSongHistory(prevHistory => prevHistory.filter(item => item.id !== songId));
-      }
-    } catch (error) {
-      console.error('Error removing song from history:', error);
-    }
+  const removeFromHistory = (songId) => {
+    setSongHistory(prevHistory => prevHistory.filter(item => item.id !== songId));
   };
 
   const formatHistoryDate = (dateString) => {

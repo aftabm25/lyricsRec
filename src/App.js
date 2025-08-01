@@ -1,23 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAllSongs, getSongById } from './data/songs';
 import SpotifySongRecognition from './components/SpotifySongRecognition';
-import SpotifyProfile from './components/SpotifyProfile';
 import UserProfile from './components/UserProfile';
+import UserDashboard from './components/UserDashboard';
+import { UserProvider, useUser } from './context/UserContext';
 import './App.css';
 
-function App() {
+function AppContent() {
   const [selectedSong, setSelectedSong] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [detectedSong, setDetectedSong] = useState(null);
   const [showRecognition, setShowRecognition] = useState(false);
-  const [showUserProfile, setShowUserProfile] = useState(false);
-  const [spotifyUser, setSpotifyUser] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(false);
   const songs = getAllSongs();
   const intervalRef = useRef(null);
   const activeLineRef = useRef(null);
   const lyricsContainerRef = useRef(null);
+  const { currentUser, isAuthenticated } = useUser();
 
   const handleSongSelect = (song) => {
     setSelectedSong(song);
@@ -31,6 +32,7 @@ function App() {
     setIsPlaying(false);
     setCurrentLineIndex(0);
     setProgress(0);
+    setShowDashboard(false);
   };
 
   const togglePlay = () => {
@@ -76,19 +78,6 @@ function App() {
   const handleBackFromRecognition = () => {
     setShowRecognition(false);
     setDetectedSong(null);
-  };
-
-  const handleShowUserProfile = () => {
-    setShowUserProfile(true);
-    setShowRecognition(false);
-  };
-
-  const handleBackFromProfile = () => {
-    setShowUserProfile(false);
-  };
-
-  const handleProfileUpdate = (userData) => {
-    setSpotifyUser(userData);
   };
 
   // Auto-scroll to active line
@@ -141,7 +130,7 @@ function App() {
             <button className="back-button" onClick={handleBackToHome}>
               ← Back to Songs
             </button>
-            <SpotifyProfile onShowProfile={handleShowUserProfile} onUserData={setSpotifyUser} />
+            <UserProfile />
           </div>
           <div className="song-header">
             <h1>{selectedSong.title}</h1>
@@ -191,38 +180,37 @@ function App() {
               <p>Discover the deeper meaning behind your favorite songs</p>
             </div>
             <div className="header-right">
-              <SpotifyProfile onShowProfile={handleShowUserProfile} onUserData={setSpotifyUser} />
+              <UserProfile />
             </div>
           </div>
         </header>
-        {showRecognition ? (
+        
+        {showDashboard && isAuthenticated ? (
+          <UserDashboard userId={currentUser.database.id} />
+        ) : showRecognition ? (
           <SpotifySongRecognition
             onSongDetected={handleSongDetected}
             detectedSong={detectedSong}
             onViewSong={handleViewSong}
             onBackToHome={handleBackFromRecognition}
           />
-        ) : showUserProfile ? (
-          <div className="user-profile-section">
-            <div className="profile-header">
-              <button className="back-button" onClick={handleBackFromProfile}>
-                ← Back to Home
-              </button>
-            </div>
-            <UserProfile 
-              spotifyUser={spotifyUser} 
-              onProfileUpdate={handleProfileUpdate}
-            />
-          </div>
         ) : (
           <>
-            <div className="recognition-section">
+            <div className="action-buttons">
               <button
                 className="recognize-song-btn"
                 onClick={() => setShowRecognition(true)}
               >
                 🎵 Get Current Spotify Song
               </button>
+              {isAuthenticated && (
+                <button
+                  className="dashboard-btn"
+                  onClick={() => setShowDashboard(true)}
+                >
+                  📊 My Dashboard
+                </button>
+              )}
             </div>
             <div className="songs-grid">
               {songs.map((song) => (
@@ -245,6 +233,14 @@ function App() {
         )}
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <UserProvider>
+      <AppContent />
+    </UserProvider>
   );
 }
 

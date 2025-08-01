@@ -156,36 +156,6 @@
   max-width: 120px;
 }
 
-/* Profile Actions */
-.profile-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.profile-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  opacity: 0.8;
-}
-
-.profile-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  opacity: 1;
-  transform: scale(1.1);
-}
-
 /* Disconnect Button */
 .disconnect-btn {
   background: rgba(231, 76, 60, 0.2);

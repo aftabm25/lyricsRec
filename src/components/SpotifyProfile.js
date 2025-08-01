@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config/api';
 import './SpotifyProfile.css';
 
-const SpotifyProfile = ({ onShowProfile, onUserData }) => {
+const SpotifyProfile = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,9 +42,6 @@ const SpotifyProfile = ({ onShowProfile, onUserData }) => {
       if (response.ok) {
         const data = await response.json();
         setUserProfile(data);
-        if (onUserData) {
-          onUserData(data);
-        }
       } else {
         throw new Error('Failed to fetch user profile');
       }
@@ -161,20 +158,9 @@ const SpotifyProfile = ({ onShowProfile, onUserData }) => {
                 <span className="user-name">{userProfile.display_name}</span>
                 <span className="user-email">{userProfile.email}</span>
               </div>
-              <div className="profile-actions">
-                {onShowProfile && (
-                  <button 
-                    className="profile-btn" 
-                    onClick={onShowProfile}
-                    title="View Profile"
-                  >
-                    👤
-                  </button>
-                )}
-                <button className="disconnect-btn" onClick={handleDisconnect} title="Disconnect Spotify">
-                  <span>×</span>
-                </button>
-              </div>
+              <button className="disconnect-btn" onClick={handleDisconnect} title="Disconnect Spotify">
+                <span>×</span>
+              </button>
             </div>
           ) : (
             <div className="profile-error">

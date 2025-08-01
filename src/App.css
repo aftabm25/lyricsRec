@@ -85,7 +85,17 @@ body {
   margin-bottom: 40px;
 }
 
-.recognize-song-btn {
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.recognize-song-btn,
+.dashboard-btn {
   background: linear-gradient(135deg, #1db954, #1ed760);
   border: none;
   border-radius: 50px;
@@ -102,7 +112,13 @@ body {
   overflow: hidden;
 }
 
-.recognize-song-btn::before {
+.dashboard-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.3);
+}
+
+.recognize-song-btn::before,
+.dashboard-btn::before {
   content: '';
   position: absolute;
   top: 0;
@@ -113,12 +129,18 @@ body {
   transition: left 0.5s;
 }
 
-.recognize-song-btn:hover {
+.recognize-song-btn:hover,
+.dashboard-btn:hover {
   transform: translateY(-4px);
   box-shadow: 0 16px 40px rgba(29, 185, 84, 0.4);
 }
 
-.recognize-song-btn:hover::before {
+.dashboard-btn:hover {
+  box-shadow: 0 16px 40px rgba(102, 126, 234, 0.4);
+}
+
+.recognize-song-btn:hover::before,
+.dashboard-btn:hover::before {
   left: 100%;
 }
 
@@ -439,6 +461,20 @@ body {
     font-size: 1rem;
   }
 
+  .action-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .recognize-song-btn,
+  .dashboard-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 16px 32px;
+    font-size: 1rem;
+  }
+
   .song-view-header {
     flex-direction: column;
     gap: 15px;
@@ -538,47 +574,5 @@ body {
 
   .song-header h1 {
     font-size: 1.6rem;
-  }
-}
-
-/* User Profile Section */
-.user-profile-section {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-}
-
-.user-profile-section .profile-header {
-  margin-bottom: 20px;
-}
-
-.user-profile-section .back-button {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #ffffff;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.user-profile-section .back-button:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-/* Mobile Responsiveness for User Profile */
-@media (max-width: 768px) {
-  .user-profile-section {
-    padding: 15px;
-  }
-}
-
-@media (max-width: 480px) {
-  .user-profile-section {
-    padding: 10px;
   }
 }
