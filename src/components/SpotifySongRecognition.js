@@ -13,6 +13,15 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
   const [isTransferring, setIsTransferring] = useState(false);
   const pollingIntervalRef = useRef(null);
 
+  // Environment detection for setup instructions
+  const isDevelopment = process.env.NODE_ENV === 'development' || 
+                       window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1';
+  
+  const redirectUri = isDevelopment 
+    ? 'http://127.0.0.1:3000/callback'
+    : 'https://lyrics-rec.vercel.app/callback';
+
   useEffect(() => {
     // Check if Spotify is configured
     if (!isSpotifyConfigured()) {
@@ -343,10 +352,15 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
           <p>Please add your Spotify API credentials in src/config/api.js</p>
           <div className="setup-instructions">
             <h4>Setup Instructions:</h4>
+            <div className="environment-indicator">
+              <span className={`env-badge ${isDevelopment ? 'dev' : 'prod'}`}>
+                {isDevelopment ? '🛠️ Development' : '🚀 Production'}
+              </span>
+            </div>
             <ol>
               <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify Developer Dashboard</a></li>
               <li>Create a new app</li>
-              <li>Add your redirect URI: <code>https://lyrics-rec.vercel.app/callback</code></li>
+              <li>Add your redirect URI: <code>{redirectUri}</code></li>
               <li>Copy your Client ID and Client Secret</li>
               <li>Update the config file with your credentials</li>
             </ol>

@@ -28,11 +28,17 @@ export const ACRCLOUD_CONFIG = {
 // 4. Note your Client ID and Client Secret
 // 5. Add your redirect URI (e.g., http://127.0.0.1:3000/callback for development)
 
+// Environment detection
+const isDevelopment = process.env.NODE_ENV === 'development' || 
+                     window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+
 export const SPOTIFY_CONFIG = {
   CLIENT_ID: '4def2a0d79de42489df02d36614c0003', // Your Spotify Client ID
   CLIENT_SECRET: '35faa5813d134b08b7ab88b28c6520b6', // Your Spotify Client Secret
-  REDIRECT_URI: 'https://lyrics-rec.vercel.app/callback', // For production
-  // REDIRECT_URI: 'http://127.0.0.1:3000/callback', // For development (explicit IPv4)
+  REDIRECT_URI: isDevelopment 
+    ? 'http://127.0.0.1:3000/callback' // For development (explicit IPv4)
+    : 'https://lyrics-rec.vercel.app/callback', // For production
   SCOPES: [
     'user-read-currently-playing',
     'user-read-playback-state',

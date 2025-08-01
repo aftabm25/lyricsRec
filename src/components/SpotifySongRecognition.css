@@ -313,6 +313,33 @@
   margin-bottom: 15px;
 }
 
+.environment-indicator {
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.env-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.env-badge.dev {
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  color: #ffc107;
+}
+
+.env-badge.prod {
+  background: rgba(40, 167, 69, 0.2);
+  border: 1px solid rgba(40, 167, 69, 0.4);
+  color: #28a745;
+}
+
 .setup-instructions ol {
   color: #b3b3b3;
   font-size: 0.9rem;
@@ -516,6 +543,11 @@
     font-size: 0.9rem;
   }
 
+  .env-badge {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+  }
+
   .setup-instructions ol {
     font-size: 0.8rem;
   }
@@ -640,7 +672,12 @@
   .setup-instructions {
     padding: 12px;
   }
-} 
+
+  .env-badge {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+  }
+}
 
 /* Song Detected View */
 .song-detected-view {
