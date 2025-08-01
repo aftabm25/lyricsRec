@@ -22,6 +22,7 @@ const UserProfile = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [tempSpotifyUser, setTempSpotifyUser] = useState(null);
+  const [isCheckingUser, setIsCheckingUser] = useState(false);
 
   useEffect(() => {
     // Check if we have a stored access token
@@ -60,36 +61,42 @@ const UserProfile = () => {
         const data = await response.json();
         console.log('Spotify profile data:', data);
         setUserProfile(data);
+        setIsConnected(true); // Mark as connected first
         
-        // Try to login with Spotify
-        try {
-          console.log('Attempting to login with Spotify...');
-          const loginResult = await authService.loginWithSpotify(data);
-          console.log('Login result:', loginResult);
-          
-          if (loginResult.success) {
-            // User exists, set the user data
-            console.log('User exists, setting user data...');
-            setDbUser(loginResult.user);
+        // Now check if user exists in our database
+        setTimeout(async () => {
+          try {
+            setIsCheckingUser(true);
+            console.log('Checking if user exists in database...');
+            const loginResult = await authService.loginWithSpotify(data);
+            console.log('Login result:', loginResult);
             
-            // Load friend requests and friends
-            if (loginResult.user) {
-              loadFriendRequests(loginResult.user.id);
-              loadFriends(loginResult.user.id);
+            if (loginResult.success) {
+              // User exists, set the user data
+              console.log('User exists, setting user data...');
+              setDbUser(loginResult.user);
+              
+              // Load friend requests and friends
+              if (loginResult.user) {
+                loadFriendRequests(loginResult.user.id);
+                loadFriends(loginResult.user.id);
+              }
+            } else if (loginResult.needsSignup) {
+              // New user needs to sign up
+              console.log('New user needs signup, showing signup modal...');
+              setTempSpotifyUser(data);
+              setShowSignupModal(true);
             }
-          } else if (loginResult.needsSignup) {
-            // New user needs to sign up
-            console.log('New user needs signup, showing signup modal...');
+          } catch (authError) {
+            console.error('Auth error:', authError);
+            // If auth fails, show signup modal as fallback
+            console.log('Auth failed, showing signup modal as fallback...');
             setTempSpotifyUser(data);
             setShowSignupModal(true);
+          } finally {
+            setIsCheckingUser(false);
           }
-        } catch (authError) {
-          console.error('Auth error:', authError);
-          // If auth fails, show signup modal as fallback
-          console.log('Auth failed, showing signup modal as fallback...');
-          setTempSpotifyUser(data);
-          setShowSignupModal(true);
-        }
+        }, 1000); // Small delay to ensure Spotify connection is stable
       } else {
         throw new Error('Failed to fetch user profile');
       }
@@ -282,6 +289,12 @@ const UserProfile = () => {
           {isLoading ? (
             <div className="profile-loading">
               <div className="loading-spinner"></div>
+              <p>Connecting to Spotify...</p>
+            </div>
+          ) : isCheckingUser ? (
+            <div className="profile-loading">
+              <div className="loading-spinner"></div>
+              <p>Setting up your profile...</p>
             </div>
           ) : userProfile ? (
             <div className="user-profile-info">
