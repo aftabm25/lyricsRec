@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config/api';
+import { createSongRecognition } from '../services/songRecognitionService';
 import './SpotifySongRecognition.css';
 
 const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBackToHome }) => {
@@ -340,32 +341,55 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
     localStorage.setItem('spotify_song_history', JSON.stringify(songHistory));
   }, [songHistory]);
 
-  const addToHistory = (song) => {
+  const addToHistory = async (song) => {
     if (!song || !song.spotify_id) return;
 
-    const historyItem = {
-      ...song,
-      detectedAt: new Date().toISOString(),
-      id: `${song.spotify_id}_${Date.now()}`
-    };
-
-    setSongHistory(prevHistory => {
-      // Check if song already exists in history (within last 24 hours)
-      const existingIndex = prevHistory.findIndex(item => 
-        item.spotify_id === song.spotify_id && 
-        new Date(item.detectedAt) > new Date(Date.now() - 24 * 60 * 60 * 1000)
-      );
-
-      if (existingIndex !== -1) {
-        // Update existing entry with new timestamp
-        const updatedHistory = [...prevHistory];
-        updatedHistory[existingIndex] = historyItem;
-        return updatedHistory;
-      } else {
-        // Add new entry to the beginning
-        return [historyItem, ...prevHistory];
+    try {
+      // Get current user ID from localStorage or Spotify profile
+      const accessToken = localStorage.getItem('spotify_access_token');
+      if (!accessToken) {
+        console.log('No access token found, skipping song recognition save');
+        return;
       }
-    });
+
+      // Create song recognition record in Firebase
+      await createSongRecognition(accessToken, song);
+      
+      // Update local history for UI display
+      const historyItem = {
+        ...song,
+        detectedAt: new Date().toISOString(),
+        id: `${song.spotify_id}_${Date.now()}`
+      };
+
+      setSongHistory(prevHistory => {
+        // Check if song already exists in history (within last 24 hours)
+        const existingIndex = prevHistory.findIndex(item => 
+          item.spotify_id === song.spotify_id && 
+          new Date(item.detectedAt) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+        );
+
+        if (existingIndex !== -1) {
+          // Update existing entry with new timestamp
+          const updatedHistory = [...prevHistory];
+          updatedHistory[existingIndex] = historyItem;
+          return updatedHistory;
+        } else {
+          // Add new entry to the beginning
+          return [historyItem, ...prevHistory];
+        }
+      });
+    } catch (error) {
+      console.error('Error saving song recognition:', error);
+      // Fallback to local storage if Firebase fails
+      const historyItem = {
+        ...song,
+        detectedAt: new Date().toISOString(),
+        id: `${song.spotify_id}_${Date.now()}`
+      };
+
+      setSongHistory(prevHistory => [historyItem, ...prevHistory]);
+    }
   };
 
   const clearHistory = () => {

@@ -251,9 +251,6 @@ const UserProfile = ({ spotifyUserId, spotifyProfile, onProfileUpdate }) => {
                 <h3>{userProfile.displayName}</h3>
                 <p className="username">@{userProfile.username}</p>
                 <p className="email">{userProfile.email}</p>
-                <p className="stats">
-                  🎵 Songs Recognized: {userProfile.totalSongsRecognized}
-                </p>
                 <p className="member-since">
                   Member since: {new Date(userProfile.createdAt).toLocaleDateString()}
                 </p>
@@ -287,7 +284,6 @@ const UserProfile = ({ spotifyUserId, spotifyProfile, onProfileUpdate }) => {
                     <div className="friend-details">
                       <h4>{friend.displayName}</h4>
                       <p>@{friend.username}</p>
-                      <p>🎵 {friend.totalSongsRecognized} songs</p>
                     </div>
                   </div>
                   <button 
@@ -324,7 +320,6 @@ const UserProfile = ({ spotifyUserId, spotifyProfile, onProfileUpdate }) => {
                     <div className="request-details">
                       <h4>{request.displayName}</h4>
                       <p>@{request.username}</p>
-                      <p>🎵 {request.totalSongsRecognized} songs</p>
                     </div>
                   </div>
                   <div className="request-actions">
@@ -379,7 +374,6 @@ const UserProfile = ({ spotifyUserId, spotifyProfile, onProfileUpdate }) => {
                     <div className="result-details">
                       <h4>{user.displayName}</h4>
                       <p>@{user.username}</p>
-                      <p>🎵 {user.totalSongsRecognized} songs</p>
                     </div>
                   </div>
                   <button 

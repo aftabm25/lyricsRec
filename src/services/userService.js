@@ -7,14 +7,12 @@ import {
   query, 
   where, 
   getDocs,
-  addDoc,
-  deleteDoc,
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
-// User profile structure
+// User profile structure - simplified for authentication only
 export const createUserProfile = async (spotifyUserId, spotifyProfile) => {
   try {
     const userRef = doc(db, 'users', spotifyUserId);
@@ -30,8 +28,6 @@ export const createUserProfile = async (spotifyUserId, spotifyProfile) => {
       friends: [],
       friendRequests: [],
       sentFriendRequests: [],
-      totalSongsRecognized: 0,
-      favoriteGenres: [],
       isOnline: true
     };
 
@@ -151,7 +147,6 @@ export const sendFriendRequest = async (fromUserId, toUsername) => {
 export const acceptFriendRequest = async (userId, friendUserId) => {
   try {
     const userProfile = await getUserProfile(userId);
-    const friendProfile = await getUserProfile(friendUserId);
     
     if (!userProfile.friendRequests.includes(friendUserId)) {
       throw new Error('No friend request from this user');
@@ -263,23 +258,6 @@ export const getFriendRequests = async (userId) => {
     return requests;
   } catch (error) {
     console.error('Error getting friend requests:', error);
-    throw error;
-  }
-};
-
-// Update song recognition count
-export const updateSongCount = async (userId) => {
-  try {
-    const userProfile = await getUserProfile(userId);
-    const newCount = (userProfile?.totalSongsRecognized || 0) + 1;
-    
-    await updateUserProfile(userId, {
-      totalSongsRecognized: newCount
-    });
-    
-    return newCount;
-  } catch (error) {
-    console.error('Error updating song count:', error);
     throw error;
   }
 }; 
