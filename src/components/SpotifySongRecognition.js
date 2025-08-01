@@ -110,6 +110,7 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
           artist: data.item.artists.map(artist => artist.name).join(', '),
           album: data.item.album.name,
           spotify_id: data.item.id,
+          spotify_url: data.item.external_urls?.spotify || null,
           duration_ms: data.item.duration_ms,
           progress_ms: data.progress_ms || 0,
           is_playing: data.is_playing,
@@ -427,6 +428,20 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
                 <span className="device-name">📱 {detectedSong.device_name}</span>
                 <span className="device-type">({detectedSong.device_type})</span>
               </div>
+
+              {/* Spotify Link */}
+              {detectedSong.spotify_url && (
+                <div className="spotify-link">
+                  <a 
+                    href={detectedSong.spotify_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="spotify-link-btn"
+                  >
+                    🎵 Open in Spotify
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -525,6 +540,20 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
                   <span className="device-name">📱 {currentSong.device_name}</span>
                   <span className="device-type">({currentSong.device_type})</span>
                 </div>
+
+                {/* Spotify Link */}
+                {currentSong.spotify_url && (
+                  <div className="spotify-link">
+                    <a 
+                      href={currentSong.spotify_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="spotify-link-btn"
+                    >
+                      🎵 Open in Spotify
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Monitoring Controls */}

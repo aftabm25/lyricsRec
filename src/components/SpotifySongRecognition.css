@@ -470,6 +470,16 @@
     font-size: 0.8rem;
   }
 
+  .spotify-link {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+
+  .spotify-link-btn {
+    padding: 8px 16px;
+    font-size: 0.8rem;
+  }
+
   .action-buttons {
     gap: 10px;
     margin-top: 15px;
@@ -604,6 +614,16 @@
   .start-monitoring-btn,
   .stop-monitoring-btn {
     padding: 10px 20px;
+    font-size: 0.8rem;
+  }
+
+  .spotify-link {
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+
+  .spotify-link-btn {
+    padding: 8px 16px;
     font-size: 0.8rem;
   }
 
@@ -827,4 +847,37 @@
 .stop-monitoring-btn:hover {
   background: rgba(231, 76, 60, 0.3);
   transform: translateY(-1px);
+} 
+
+/* Spotify Link */
+.spotify-link {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.spotify-link-btn {
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  border: none;
+  border-radius: 12px;
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spotify-link-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+  text-decoration: none;
+  color: #ffffff;
 } 
