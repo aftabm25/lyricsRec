@@ -11,6 +11,8 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [availableDevices, setAvailableDevices] = useState([]);
   const [isTransferring, setIsTransferring] = useState(false);
+  const [songHistory, setSongHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   const pollingIntervalRef = useRef(null);
 
   useEffect(() => {
@@ -131,6 +133,8 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
           setCurrentSong(song);
           if (!isPolling) {
             onSongDetected(song);
+            // Add to history when song is first detected (not during polling)
+            addToHistory(song);
           }
         } else {
           // Same song, just update progress
@@ -318,6 +322,75 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
     stopMonitoring();
   };
 
+  // Load song history from localStorage on component mount
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('spotify_song_history');
+    if (savedHistory) {
+      try {
+        setSongHistory(JSON.parse(savedHistory));
+      } catch (error) {
+        console.error('Error loading song history:', error);
+        setSongHistory([]);
+      }
+    }
+  }, []);
+
+  // Save song history to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('spotify_song_history', JSON.stringify(songHistory));
+  }, [songHistory]);
+
+  const addToHistory = (song) => {
+    if (!song || !song.spotify_id) return;
+
+    const historyItem = {
+      ...song,
+      detectedAt: new Date().toISOString(),
+      id: `${song.spotify_id}_${Date.now()}`
+    };
+
+    setSongHistory(prevHistory => {
+      // Check if song already exists in history (within last 24 hours)
+      const existingIndex = prevHistory.findIndex(item => 
+        item.spotify_id === song.spotify_id && 
+        new Date(item.detectedAt) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+      );
+
+      if (existingIndex !== -1) {
+        // Update existing entry with new timestamp
+        const updatedHistory = [...prevHistory];
+        updatedHistory[existingIndex] = historyItem;
+        return updatedHistory;
+      } else {
+        // Add new entry to the beginning
+        return [historyItem, ...prevHistory];
+      }
+    });
+  };
+
+  const clearHistory = () => {
+    setSongHistory([]);
+    localStorage.removeItem('spotify_song_history');
+  };
+
+  const removeFromHistory = (songId) => {
+    setSongHistory(prevHistory => prevHistory.filter(item => item.id !== songId));
+  };
+
+  const formatHistoryDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
   // Auto-start monitoring when a song is first detected
   useEffect(() => {
     console.log('detectedSong changed:', detectedSong, 'isMonitoring:', isMonitoring);
@@ -362,6 +435,14 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
       <div className="recognition-header">
         <h2>🎵 Spotify Song Recognition</h2>
         <p>Get the currently playing song from your Spotify account</p>
+        <div className="header-actions">
+          <button 
+            className="history-btn" 
+            onClick={() => setShowHistory(!showHistory)}
+          >
+            {showHistory ? '📋 Hide History' : `📋 Song History (${songHistory.length})`}
+          </button>
+        </div>
       </div>
 
       {!accessToken ? (
@@ -373,6 +454,76 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
               <span>💡 Look for the Spotify profile button in the top-right corner of the page</span>
             </div>
           </div>
+        </div>
+      ) : showHistory ? (
+        <div className="song-history-view">
+          <div className="history-header">
+            <h3>📋 Song Recognition History</h3>
+            <p>All songs you've recognized with Spotify</p>
+          </div>
+          
+          {songHistory.length === 0 ? (
+            <div className="empty-history">
+              <p>No songs recognized yet. Start by getting your current song!</p>
+            </div>
+          ) : (
+            <div className="history-list">
+              {songHistory.map((song) => (
+                <div key={song.id} className="history-item">
+                  <div className="history-song-info">
+                    <div className="song-main-info">
+                      <h4 className="history-song-title">{song.title}</h4>
+                      <p className="history-song-artist">{song.artist}</p>
+                      <p className="history-song-album">{song.album}</p>
+                    </div>
+                    <div className="history-song-meta">
+                      <span className="history-timestamp">{formatHistoryDate(song.detectedAt)}</span>
+                      <button 
+                        className="remove-history-btn"
+                        onClick={() => removeFromHistory(song.id)}
+                        title="Remove from history"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="history-song-actions">
+                    {song.spotify_url && (
+                      <a 
+                        href={song.spotify_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="history-spotify-link"
+                      >
+                        🎵 Open in Spotify
+                      </a>
+                    )}
+                    <button 
+                      className="history-transfer-btn"
+                      onClick={() => {
+                        setShowHistory(false);
+                        onSongDetected(song);
+                      }}
+                    >
+                      🔄 Re-detect
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {songHistory.length > 0 && (
+            <div className="history-actions">
+              <button className="clear-history-btn" onClick={clearHistory}>
+                🗑️ Clear All History
+              </button>
+              <button className="back-to-recognition-btn" onClick={() => setShowHistory(false)}>
+                ← Back to Recognition
+              </button>
+            </div>
+          )}
         </div>
       ) : detectedSong ? (
         <div className="song-detected-view">
