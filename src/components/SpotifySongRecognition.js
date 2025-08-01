@@ -24,6 +24,21 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
     }
   }, []);
 
+  // Helper function to format time in MM:SS format
+  const formatTime = (milliseconds) => {
+    if (!milliseconds) return '0:00';
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Helper function to calculate progress percentage
+  const calculateProgress = (progressMs, durationMs) => {
+    if (!progressMs || !durationMs) return 0;
+    return Math.round((progressMs / durationMs) * 100);
+  };
+
   const getCurrentlyPlaying = async () => {
     if (!accessToken) {
       setError('Please connect to Spotify using the profile button in the header.');
@@ -67,8 +82,15 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
           album: data.item.album.name,
           spotify_id: data.item.id,
           duration_ms: data.item.duration_ms,
-          progress_ms: data.progress_ms,
-          is_playing: data.is_playing
+          progress_ms: data.progress_ms || 0,
+          is_playing: data.is_playing,
+          // Add formatted time and progress percentage
+          current_time: formatTime(data.progress_ms || 0),
+          total_time: formatTime(data.item.duration_ms),
+          progress_percentage: calculateProgress(data.progress_ms || 0, data.item.duration_ms),
+          // Add device info if available
+          device_name: data.device?.name || 'Unknown Device',
+          device_type: data.device?.type || 'Unknown'
         };
         
         setCurrentSong(song);
@@ -139,9 +161,33 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
                 <p className="song-title">{currentSong.title}</p>
                 <p className="song-artist">{currentSong.artist}</p>
                 <p className="song-album">{currentSong.album}</p>
+                
+                {/* Playback Progress */}
+                <div className="playback-progress">
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill" 
+                      style={{ width: `${currentSong.progress_percentage}%` }}
+                    ></div>
+                  </div>
+                  <div className="time-info">
+                    <span className="current-time">{currentSong.current_time}</span>
+                    <span className="total-time">{currentSong.total_time}</span>
+                  </div>
+                  <div className="progress-percentage">
+                    {currentSong.progress_percentage}% complete
+                  </div>
+                </div>
+
                 <p className="song-status">
                   {currentSong.is_playing ? '▶️ Playing' : '⏸️ Paused'}
                 </p>
+                
+                {/* Device Info */}
+                <div className="device-info">
+                  <span className="device-name">📱 {currentSong.device_name}</span>
+                  <span className="device-type">({currentSong.device_type})</span>
+                </div>
               </div>
             </div>
           )}

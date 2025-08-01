@@ -150,7 +150,7 @@
 .song-details {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .song-title {
@@ -174,12 +174,104 @@
   text-align: center;
 }
 
+/* Playback Progress */
+.playback-progress {
+  margin: 15px 0;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.playback-progress .progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.playback-progress .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1db954, #1ed760);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.playback-progress .progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  transform: translate(50%, -50%);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.time-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.current-time {
+  color: #1db954;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.total-time {
+  color: #b3b3b3;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.progress-percentage {
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.8;
+}
+
 .song-status {
   color: #1db954;
   font-size: 0.9rem;
   font-weight: 600;
   text-align: center;
   margin-top: 8px;
+}
+
+/* Device Info */
+.device-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 10px;
+}
+
+.device-name {
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.device-type {
+  color: #b3b3b3;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
 }
 
 /* Error State */
@@ -310,8 +402,48 @@
     font-size: 0.8rem;
   }
 
+  .playback-progress {
+    padding: 12px;
+    margin: 12px 0;
+  }
+
+  .playback-progress .progress-bar {
+    height: 5px;
+  }
+
+  .playback-progress .progress-fill::after {
+    width: 10px;
+    height: 10px;
+  }
+
+  .time-info {
+    margin-bottom: 6px;
+  }
+
+  .current-time,
+  .total-time {
+    font-size: 0.8rem;
+  }
+
+  .progress-percentage {
+    font-size: 0.75rem;
+  }
+
   .song-status {
     font-size: 0.8rem;
+  }
+
+  .device-info {
+    padding: 8px;
+    margin-top: 8px;
+  }
+
+  .device-name {
+    font-size: 0.8rem;
+  }
+
+  .device-type {
+    font-size: 0.7rem;
   }
 
   .recognition-error {
@@ -364,6 +496,41 @@
 
   .song-title {
     font-size: 1rem;
+  }
+
+  .playback-progress {
+    padding: 10px;
+    margin: 10px 0;
+  }
+
+  .playback-progress .progress-bar {
+    height: 4px;
+  }
+
+  .playback-progress .progress-fill::after {
+    width: 8px;
+    height: 8px;
+  }
+
+  .current-time,
+  .total-time {
+    font-size: 0.75rem;
+  }
+
+  .progress-percentage {
+    font-size: 0.7rem;
+  }
+
+  .device-info {
+    padding: 6px;
+  }
+
+  .device-name {
+    font-size: 0.75rem;
+  }
+
+  .device-type {
+    font-size: 0.65rem;
   }
 
   .recognition-error {
