@@ -232,7 +232,7 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
             <ol>
               <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify Developer Dashboard</a></li>
               <li>Create a new app</li>
-              <li>Add your redirect URI: <code>http://127.0.0.1:3000/callback</code></li>
+              <li>Add your redirect URI: <code>https://lyrics-rec.vercel.app/callback</code></li>
               <li>Copy your Client ID and Client Secret</li>
               <li>Update the config file with your credentials</li>
             </ol>
