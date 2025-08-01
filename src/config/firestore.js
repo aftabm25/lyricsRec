@@ -1,12 +1,21 @@
-import { Firestore } from '@google-cloud/firestore';
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBYHpUzE9xZsXgWIcJqNdrCmHvW3hSQAwc",
+  authDomain: "lyrics-rec-app.firebaseapp.com",
+  projectId: "lyrics-rec-app",
+  storageBucket: "lyrics-rec-app.firebasestorage.app",
+  messagingSenderId: "1027026308127",
+  appId: "1:1027026308127:web:f375153d7636b38cf8192a"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore
-// Note: In production, you'll need to set up Google Cloud credentials
-// For now, we'll use the default credentials which work with Google Cloud SDK
-const firestore = new Firestore({
-  projectId: 'lyrics-rec-app', // Replace with your actual project ID
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS // Path to your service account key
-});
+const firestore = getFirestore(app);
 
 // Collections
 export const COLLECTIONS = {

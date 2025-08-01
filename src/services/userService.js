@@ -1,10 +1,22 @@
+import { 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  addDoc,
+  serverTimestamp 
+} from 'firebase/firestore';
 import firestore, { COLLECTIONS } from '../config/firestore';
 
 class UserService {
   // Create or update user profile
   async createOrUpdateUser(spotifyUser, username = null) {
     try {
-      const userRef = firestore.collection(COLLECTIONS.USERS).doc(spotifyUser.id);
+      const userRef = doc(firestore, COLLECTIONS.USERS, spotifyUser.id);
       
       const userData = {
         spotifyId: spotifyUser.id,
@@ -12,14 +24,14 @@ class UserService {
         email: spotifyUser.email,
         profileImage: spotifyUser.images?.[0]?.url || null,
         username: username || this.generateUsername(spotifyUser.display_name),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastLoginAt: new Date(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
         isActive: true
       };
 
-      await userRef.set(userData, { merge: true });
-      return userData;
+      await setDoc(userRef, userData, { merge: true });
+      return { id: spotifyUser.id, ...userData };
     } catch (error) {
       console.error('Error creating/updating user:', error);
       throw error;
@@ -29,11 +41,11 @@ class UserService {
   // Get user by Spotify ID
   async getUserBySpotifyId(spotifyId) {
     try {
-      const userRef = firestore.collection(COLLECTIONS.USERS).doc(spotifyId);
-      const doc = await userRef.get();
+      const userRef = doc(firestore, COLLECTIONS.USERS, spotifyId);
+      const docSnap = await getDoc(userRef);
       
-      if (doc.exists) {
-        return { id: doc.id, ...doc.data() };
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
       }
       return null;
     } catch (error) {
@@ -45,13 +57,13 @@ class UserService {
   // Get user by username
   async getUserByUsername(username) {
     try {
-      const usersRef = firestore.collection(COLLECTIONS.USERS);
-      const query = usersRef.where('username', '==', username);
-      const snapshot = await query.get();
+      const usersRef = collection(firestore, COLLECTIONS.USERS);
+      const q = query(usersRef, where('username', '==', username));
+      const querySnapshot = await getDocs(q);
       
-      if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
-        return { id: doc.id, ...doc.data() };
+      if (!querySnapshot.empty) {
+        const docSnap = querySnapshot.docs[0];
+        return { id: docSnap.id, ...docSnap.data() };
       }
       return null;
     } catch (error) {
@@ -63,10 +75,10 @@ class UserService {
   // Update user profile
   async updateUserProfile(spotifyId, updates) {
     try {
-      const userRef = firestore.collection(COLLECTIONS.USERS).doc(spotifyId);
-      await userRef.update({
+      const userRef = doc(firestore, COLLECTIONS.USERS, spotifyId);
+      await updateDoc(userRef, {
         ...updates,
-        updatedAt: new Date()
+        updatedAt: serverTimestamp()
       });
     } catch (error) {
       console.error('Error updating user profile:', error);
@@ -108,21 +120,23 @@ class UserService {
         throw new Error('Cannot send friend request to yourself');
       }
 
-      const friendshipRef = firestore.collection(COLLECTIONS.FRIENDSHIPS);
-      const existingRequest = await friendshipRef
-        .where('fromUserId', '==', fromUserId)
-        .where('toUserId', '==', toUser.id)
-        .get();
+      const friendshipsRef = collection(firestore, COLLECTIONS.FRIENDSHIPS);
+      const q = query(
+        friendshipsRef, 
+        where('fromUserId', '==', fromUserId),
+        where('toUserId', '==', toUser.id)
+      );
+      const querySnapshot = await getDocs(q);
 
-      if (!existingRequest.empty) {
+      if (!querySnapshot.empty) {
         throw new Error('Friend request already sent');
       }
 
-      await friendshipRef.add({
+      await addDoc(friendshipsRef, {
         fromUserId,
         toUserId: toUser.id,
         status: 'pending',
-        createdAt: new Date()
+        createdAt: serverTimestamp()
       });
 
       return { success: true, message: 'Friend request sent successfully' };
@@ -135,10 +149,10 @@ class UserService {
   // Accept friend request
   async acceptFriendRequest(friendshipId) {
     try {
-      const friendshipRef = firestore.collection(COLLECTIONS.FRIENDSHIPS).doc(friendshipId);
-      await friendshipRef.update({
+      const friendshipRef = doc(firestore, COLLECTIONS.FRIENDSHIPS, friendshipId);
+      await updateDoc(friendshipRef, {
         status: 'accepted',
-        acceptedAt: new Date()
+        acceptedAt: serverTimestamp()
       });
     } catch (error) {
       console.error('Error accepting friend request:', error);
@@ -149,10 +163,10 @@ class UserService {
   // Reject friend request
   async rejectFriendRequest(friendshipId) {
     try {
-      const friendshipRef = firestore.collection(COLLECTIONS.FRIENDSHIPS).doc(friendshipId);
-      await friendshipRef.update({
+      const friendshipRef = doc(firestore, COLLECTIONS.FRIENDSHIPS, friendshipId);
+      await updateDoc(friendshipRef, {
         status: 'rejected',
-        rejectedAt: new Date()
+        rejectedAt: serverTimestamp()
       });
     } catch (error) {
       console.error('Error rejecting friend request:', error);
@@ -163,15 +177,17 @@ class UserService {
   // Get friend requests for a user
   async getFriendRequests(userId) {
     try {
-      const requestsRef = firestore.collection(COLLECTIONS.FRIENDSHIPS);
-      const snapshot = await requestsRef
-        .where('toUserId', '==', userId)
-        .where('status', '==', 'pending')
-        .get();
+      const requestsRef = collection(firestore, COLLECTIONS.FRIENDSHIPS);
+      const q = query(
+        requestsRef,
+        where('toUserId', '==', userId),
+        where('status', '==', 'pending')
+      );
+      const querySnapshot = await getDocs(q);
 
       const requests = [];
-      for (const doc of snapshot.docs) {
-        const request = { id: doc.id, ...doc.data() };
+      for (const docSnap of querySnapshot.docs) {
+        const request = { id: docSnap.id, ...docSnap.data() };
         const fromUser = await this.getUserBySpotifyId(request.fromUserId);
         requests.push({
           ...request,
@@ -189,14 +205,13 @@ class UserService {
   // Get user's friends
   async getUserFriends(userId) {
     try {
-      const friendshipsRef = firestore.collection(COLLECTIONS.FRIENDSHIPS);
-      const snapshot = await friendshipsRef
-        .where('status', '==', 'accepted')
-        .get();
+      const friendshipsRef = collection(firestore, COLLECTIONS.FRIENDSHIPS);
+      const q = query(friendshipsRef, where('status', '==', 'accepted'));
+      const querySnapshot = await getDocs(q);
 
       const friends = [];
-      for (const doc of snapshot.docs) {
-        const friendship = doc.data();
+      for (const docSnap of querySnapshot.docs) {
+        const friendship = docSnap.data();
         if (friendship.fromUserId === userId || friendship.toUserId === userId) {
           const friendId = friendship.fromUserId === userId ? friendship.toUserId : friendship.fromUserId;
           const friend = await this.getUserBySpotifyId(friendId);
@@ -216,16 +231,17 @@ class UserService {
   // Search users by username
   async searchUsers(query, currentUserId) {
     try {
-      const usersRef = firestore.collection(COLLECTIONS.USERS);
-      const snapshot = await usersRef
-        .where('username', '>=', query)
-        .where('username', '<=', query + '\uf8ff')
-        .limit(10)
-        .get();
+      const usersRef = collection(firestore, COLLECTIONS.USERS);
+      const q = query(
+        usersRef,
+        where('username', '>=', query),
+        where('username', '<=', query + '\uf8ff')
+      );
+      const querySnapshot = await getDocs(q);
 
       const users = [];
-      for (const doc of snapshot.docs) {
-        const user = { id: doc.id, ...doc.data() };
+      for (const docSnap of querySnapshot.docs) {
+        const user = { id: docSnap.id, ...docSnap.data() };
         if (user.id !== currentUserId) {
           users.push(user);
         }
