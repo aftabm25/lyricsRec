@@ -16,6 +16,7 @@ class UserService {
   // Create or update user profile
   async createOrUpdateUser(spotifyUser, username = null) {
     try {
+      console.log('Creating/updating user:', spotifyUser.id, spotifyUser.display_name);
       const userRef = doc(firestore, COLLECTIONS.USERS, spotifyUser.id);
       
       const userData = {
@@ -30,7 +31,9 @@ class UserService {
         isActive: true
       };
 
+      console.log('User data to save:', userData);
       await setDoc(userRef, userData, { merge: true });
+      console.log('User saved successfully to Firestore');
       return { id: spotifyUser.id, ...userData };
     } catch (error) {
       console.error('Error creating/updating user:', error);
@@ -231,21 +234,26 @@ class UserService {
   // Search users by username or user ID
   async searchUsers(query, currentUserId) {
     try {
+      console.log('Searching users with query:', query, 'currentUserId:', currentUserId);
       const usersRef = collection(firestore, COLLECTIONS.USERS);
       
       // First try to find by exact user ID
       if (query.length >= 10) { // User IDs are typically longer
         try {
+          console.log('Trying to find user by ID:', query);
           const userById = await this.getUserBySpotifyId(query);
           if (userById && userById.id !== currentUserId) {
+            console.log('Found user by ID:', userById);
             return [userById];
           }
         } catch (error) {
+          console.log('Error finding user by ID, continuing with username search:', error);
           // Continue with username search if ID search fails
         }
       }
       
       // Search by username (partial match)
+      console.log('Searching by username:', query);
       const q = query(
         usersRef,
         where('username', '>=', query),
@@ -261,6 +269,7 @@ class UserService {
         }
       }
 
+      console.log('Found users by username:', users);
       return users;
     } catch (error) {
       console.error('Error searching users:', error);

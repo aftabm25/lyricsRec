@@ -3,12 +3,12 @@ import { getFirestore } from 'firebase/firestore';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBYHpUzE9xZsXgWIcJqNdrCmHvW3hSQAwc",
-  authDomain: "lyrics-rec-app.firebaseapp.com",
-  projectId: "lyrics-rec-app",
-  storageBucket: "lyrics-rec-app.firebasestorage.app",
-  messagingSenderId: "1027026308127",
-  appId: "1:1027026308127:web:f375153d7636b38cf8192a"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyBYHpUzE9xZsXgWIcJqNdrCmHvW3hSQAwc",
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "lyrics-rec-app.firebaseapp.com",
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "lyrics-rec-app",
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "lyrics-rec-app.firebasestorage.app",
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "1027026308127",
+  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:1027026308127:web:f375153d7636b38cf8192a"
 };
 
 // Initialize Firebase
