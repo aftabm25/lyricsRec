@@ -228,10 +228,24 @@ class UserService {
     }
   }
 
-  // Search users by username
+  // Search users by username or user ID
   async searchUsers(query, currentUserId) {
     try {
       const usersRef = collection(firestore, COLLECTIONS.USERS);
+      
+      // First try to find by exact user ID
+      if (query.length >= 10) { // User IDs are typically longer
+        try {
+          const userById = await this.getUserBySpotifyId(query);
+          if (userById && userById.id !== currentUserId) {
+            return [userById];
+          }
+        } catch (error) {
+          // Continue with username search if ID search fails
+        }
+      }
+      
+      // Search by username (partial match)
       const q = query(
         usersRef,
         where('username', '>=', query),

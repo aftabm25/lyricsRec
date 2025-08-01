@@ -306,6 +306,28 @@ const UserProfile = () => {
             <h3>Edit Profile</h3>
             <div className="profile-form">
               <div className="form-group">
+                <label>User ID:</label>
+                <div className="user-id-container">
+                  <input 
+                    type="text" 
+                    value={dbUser.id} 
+                    readOnly 
+                    className="user-id-input"
+                  />
+                  <button 
+                    className="copy-btn"
+                    onClick={() => {
+                      navigator.clipboard.writeText(dbUser.id);
+                      alert('User ID copied to clipboard!');
+                    }}
+                    title="Copy User ID"
+                  >
+                    📋
+                  </button>
+                </div>
+                <small>Share this ID with friends to help them find you</small>
+              </div>
+              <div className="form-group">
                 <label>Username:</label>
                 <input 
                   type="text" 
@@ -425,7 +447,7 @@ const UserProfile = () => {
             <div className="search-section">
               <input
                 type="text"
-                placeholder="Search by username..."
+                placeholder="Search by username or user ID..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);

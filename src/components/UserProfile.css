@@ -309,8 +309,46 @@
 }
 
 .form-group small {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 4px;
+  display: block;
+}
+
+/* User ID Container */
+.user-id-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-id-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #1db954 !important;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+.copy-btn {
+  background: #1db954;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+}
+
+.copy-btn:hover {
+  background: #1ed760;
+  transform: scale(1.05);
 }
 
 /* Friends Modal */
