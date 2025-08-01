@@ -26,12 +26,12 @@ export const ACRCLOUD_CONFIG = {
 // 2. Log in with your Spotify account
 // 3. Create a new app
 // 4. Note your Client ID and Client Secret
-// 5. Add your redirect URI (e.g., http://localhost:3000/callback for development)
+// 5. Add your redirect URI (e.g., https://localhost:3000/callback for development)
 
 export const SPOTIFY_CONFIG = {
-  CLIENT_ID: 'YOUR_SPOTIFY_CLIENT_ID', // Replace with your Spotify Client ID
-  CLIENT_SECRET: 'YOUR_SPOTIFY_CLIENT_SECRET', // Replace with your Spotify Client Secret
-  REDIRECT_URI: 'http://localhost:3000/callback', // For development
+  CLIENT_ID: '4def2a0d79de42489df02d36614c0003', // Your Spotify Client ID
+  CLIENT_SECRET: '35faa5813d134b08b7ab88b28c6520b6', // Your Spotify Client Secret
+  REDIRECT_URI: 'https://localhost:3000/callback', // For development with HTTPS
   // REDIRECT_URI: 'https://your-vercel-app.vercel.app/callback', // For production
   SCOPES: [
     'user-read-currently-playing',
