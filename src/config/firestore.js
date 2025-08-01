@@ -1,6 +1,6 @@
 import { Firestore } from '@google-cloud/firestore';
 
-// Initialize Firestore
+// Initialize Firestore for user management only
 const firestore = new Firestore({
   projectId: 'lyrics-rec-app', // You'll need to create this project in Google Cloud Console
   keyFilename: './service-account-key.json' // For server-side (we'll handle client-side differently)
@@ -142,37 +142,79 @@ export const getFriendsList = async (userId) => {
   }
 };
 
-// Song history functions
-export const saveSongToHistory = async (userId, songData) => {
+// User authentication and session management
+export const createUserSession = async (userId, sessionData) => {
   try {
-    const historyRef = firestore.collection('users').doc(userId).collection('songHistory');
-    await historyRef.add({
-      ...songData,
-      addedAt: new Date()
+    const sessionRef = firestore.collection('users').doc(userId).collection('sessions').doc('current');
+    await sessionRef.set({
+      ...sessionData,
+      createdAt: new Date(),
+      lastActive: new Date()
     });
     return { success: true };
   } catch (error) {
-    console.error('Error saving song to history:', error);
+    console.error('Error creating user session:', error);
     return { success: false, error: error.message };
   }
 };
 
-export const getUserSongHistory = async (userId, limit = 50) => {
+export const updateUserSession = async (userId, sessionData) => {
   try {
-    const historyRef = firestore.collection('users').doc(userId).collection('songHistory');
-    const historyQuery = await historyRef
-      .orderBy('addedAt', 'desc')
-      .limit(limit)
-      .get();
-    
-    const history = historyQuery.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    
-    return { success: true, history };
+    const sessionRef = firestore.collection('users').doc(userId).collection('sessions').doc('current');
+    await sessionRef.update({
+      ...sessionData,
+      lastActive: new Date()
+    });
+    return { success: true };
   } catch (error) {
-    console.error('Error getting user song history:', error);
+    console.error('Error updating user session:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getUserSession = async (userId) => {
+  try {
+    const sessionRef = firestore.collection('users').doc(userId).collection('sessions').doc('current');
+    const sessionDoc = await sessionRef.get();
+    
+    if (sessionDoc.exists) {
+      return { success: true, session: sessionDoc.data() };
+    } else {
+      return { success: false, error: 'Session not found' };
+    }
+  } catch (error) {
+    console.error('Error getting user session:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// User preferences and settings
+export const saveUserPreferences = async (userId, preferences) => {
+  try {
+    const prefsRef = firestore.collection('users').doc(userId).collection('preferences').doc('settings');
+    await prefsRef.set({
+      ...preferences,
+      updatedAt: new Date()
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving user preferences:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getUserPreferences = async (userId) => {
+  try {
+    const prefsRef = firestore.collection('users').doc(userId).collection('preferences').doc('settings');
+    const prefsDoc = await prefsRef.get();
+    
+    if (prefsDoc.exists) {
+      return { success: true, preferences: prefsDoc.data() };
+    } else {
+      return { success: true, preferences: {} };
+    }
+  } catch (error) {
+    console.error('Error getting user preferences:', error);
     return { success: false, error: error.message };
   }
 }; 
