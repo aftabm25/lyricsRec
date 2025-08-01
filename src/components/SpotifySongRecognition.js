@@ -9,6 +9,8 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
   const [accessToken, setAccessToken] = useState(null);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [availableDevices, setAvailableDevices] = useState([]);
+  const [isTransferring, setIsTransferring] = useState(false);
   const pollingIntervalRef = useRef(null);
 
   useEffect(() => {
@@ -179,6 +181,118 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
     setIsMonitoring(false);
   };
 
+  const getAvailableDevices = async () => {
+    if (!accessToken) {
+      setError('Please connect to Spotify using the profile button in the header.');
+      return;
+    }
+
+    try {
+      const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('spotify_access_token');
+        setAccessToken(null);
+        setError('Spotify session expired. Please reconnect using the profile button in the header.');
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableDevices(data.devices || []);
+        return data.devices || [];
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error getting available devices:', error);
+      setError('Failed to get available devices. Please try again.');
+      return [];
+    }
+  };
+
+  const transferPlaybackToDevice = async (deviceId, play = true) => {
+    if (!accessToken) {
+      setError('Please connect to Spotify using the profile button in the header.');
+      return false;
+    }
+
+    try {
+      setIsTransferring(true);
+      setError(null);
+
+      const response = await fetch('https://api.spotify.com/v1/me/player', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          device_ids: [deviceId],
+          play: play
+        })
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('spotify_access_token');
+        setAccessToken(null);
+        setError('Spotify session expired. Please reconnect using the profile button in the header.');
+        return false;
+      }
+
+      if (response.status === 403) {
+        setError('Playback control requires Spotify Premium. Please upgrade your account.');
+        return false;
+      }
+
+      if (response.status === 204) {
+        // Success - playback transferred
+        return true;
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error transferring playback:', error);
+      setError('Failed to transfer playback. Please try again.');
+      return false;
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  const handleTransferToPhone = async () => {
+    // Get available devices first
+    const devices = await getAvailableDevices();
+    
+    // Find mobile devices (phones/tablets)
+    const mobileDevices = devices.filter(device => 
+      device.type === 'Smartphone' || 
+      device.type === 'Tablet' ||
+      device.name.toLowerCase().includes('iphone') ||
+      device.name.toLowerCase().includes('android') ||
+      device.name.toLowerCase().includes('mobile')
+    );
+
+    if (mobileDevices.length === 0) {
+      setError('No mobile devices found. Please make sure your phone is connected to Spotify.');
+      return;
+    }
+
+    // Try to transfer to the first mobile device
+    const success = await transferPlaybackToDevice(mobileDevices[0].id, true);
+    
+    if (success) {
+      // Update the current song info to reflect the transfer
+      setTimeout(() => {
+        getCurrentlyPlaying(true);
+      }, 1000);
+    }
+  };
+
   const handleViewSong = () => {
     if (onViewSong && detectedSong) {
       onViewSong(detectedSong);
@@ -319,6 +433,14 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
             <div className="action-buttons">
               <button className="view-song-btn" onClick={handleViewSong}>
                 🎵 View Song & Lyrics
+              </button>
+              
+              <button 
+                className="transfer-to-phone-btn" 
+                onClick={handleTransferToPhone}
+                disabled={isTransferring}
+              >
+                {isTransferring ? '📱 Transferring...' : '📱 Play on Phone'}
               </button>
               
               {isMonitoring ? (

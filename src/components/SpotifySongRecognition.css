@@ -481,6 +481,11 @@
     font-size: 0.9rem;
   }
 
+  .transfer-to-phone-btn {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+
   .try-again-btn {
     padding: 10px 20px;
     font-size: 0.8rem;
@@ -613,6 +618,11 @@
     font-size: 0.9rem;
   }
 
+  .transfer-to-phone-btn {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+
   .try-again-btn {
     padding: 10px 20px;
     font-size: 0.8rem;
@@ -665,6 +675,30 @@
 .view-song-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+}
+
+.transfer-to-phone-btn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.transfer-to-phone-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.transfer-to-phone-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .try-again-btn {
