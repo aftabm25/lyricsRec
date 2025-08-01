@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAllSongs, getSongById } from './data/songs';
-import SpotifySongRecognition from './components/SpotifySongRecognition'; // New import
+import SpotifySongRecognition from './components/SpotifySongRecognition';
+import SpotifyProfile from './components/SpotifyProfile'; // New import
 import './App.css';
 
 function App() {
@@ -96,9 +97,12 @@ function App() {
     return (
       <div className="app">
         <div className="song-view">
-          <button className="back-button" onClick={handleBackToHome}>
-            ← Back to Songs
-          </button>
+          <div className="song-view-header">
+            <button className="back-button" onClick={handleBackToHome}>
+              ← Back to Songs
+            </button>
+            <SpotifyProfile />
+          </div>
           <div className="song-header">
             <h1>{selectedSong.title}</h1>
             <p className="artist">{selectedSong.artist}</p>
@@ -141,8 +145,15 @@ function App() {
     <div className="app">
       <div className="home-screen">
         <header className="app-header">
-          <h1>Lyrics & Meanings</h1>
-          <p>Discover the deeper meaning behind your favorite songs</p>
+          <div className="header-content">
+            <div className="header-left">
+              <h1>Lyrics & Meanings</h1>
+              <p>Discover the deeper meaning behind your favorite songs</p>
+            </div>
+            <div className="header-right">
+              <SpotifyProfile />
+            </div>
+          </div>
         </header>
         {showRecognition ? (
           <SpotifySongRecognition onSongDetected={handleSongDetected} />

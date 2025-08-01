@@ -1,0 +1,268 @@
+/* Spotify Profile Component Styles */
+.spotify-profile {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Connect Button */
+.spotify-connect-btn {
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  border: none;
+  border-radius: 25px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spotify-connect-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+}
+
+.spotify-icon {
+  font-size: 1rem;
+}
+
+.connect-text {
+  font-size: 0.85rem;
+}
+
+/* Profile Container */
+.profile-container {
+  display: flex;
+  align-items: center;
+}
+
+/* Loading State */
+.profile-loading {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(29, 185, 84, 0.3);
+  border-top: 2px solid #1db954;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* User Profile */
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.user-profile:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(29, 185, 84, 0.3);
+}
+
+/* Profile Image */
+.profile-image {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.profile-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.profile-avatar-placeholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.connection-status {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #121212;
+  animation: pulse 2s infinite;
+}
+
+.connection-status.connected {
+  background: #1db954;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Profile Info */
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.user-name {
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.user-email {
+  color: #b3b3b3;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+/* Disconnect Button */
+.disconnect-btn {
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e74c3c;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.disconnect-btn:hover {
+  background: rgba(231, 76, 60, 0.3);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.disconnect-btn span {
+  line-height: 1;
+  margin-top: -2px;
+}
+
+/* Error State */
+.profile-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  border-radius: 20px;
+}
+
+.error-icon {
+  font-size: 1rem;
+}
+
+.retry-btn {
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  border-radius: 12px;
+  padding: 4px 8px;
+  color: #e74c3c;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  background: rgba(231, 76, 60, 0.3);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .spotify-connect-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .connect-text {
+    display: none;
+  }
+
+  .user-profile {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .profile-avatar,
+  .profile-avatar-placeholder {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+
+  .user-name {
+    font-size: 0.8rem;
+    max-width: 80px;
+  }
+
+  .user-email {
+    font-size: 0.7rem;
+    max-width: 80px;
+  }
+
+  .disconnect-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-name,
+  .user-email {
+    display: none;
+  }
+
+  .user-profile {
+    padding: 6px;
+  }
+} 
