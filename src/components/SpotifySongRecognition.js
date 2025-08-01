@@ -435,13 +435,32 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
       <div className="recognition-header">
         <h2>🎵 Spotify Song Recognition</h2>
         <p>Get the currently playing song from your Spotify account</p>
-        <div className="header-actions">
-          <button 
-            className="history-btn" 
-            onClick={() => setShowHistory(!showHistory)}
-          >
-            {showHistory ? '📋 Hide History' : `📋 Song History (${songHistory.length})`}
-          </button>
+        {accessToken && (
+          <div className="header-actions">
+            <button 
+              className="history-btn" 
+              onClick={() => setShowHistory(!showHistory)}
+              style={{ 
+                background: 'linear-gradient(135deg, #1db954, #1ed760)',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 20px',
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#ffffff',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(29, 185, 84, 0.3)',
+                marginTop: '15px'
+              }}
+            >
+              {showHistory ? '📋 Hide History' : `📋 Song History (${songHistory.length})`}
+            </button>
+          </div>
+        )}
+        {/* Debug info - remove this later */}
+        <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
+          Debug: accessToken = {accessToken ? 'Connected' : 'Not connected'}, 
+          History count = {songHistory.length}
         </div>
       </div>
 
