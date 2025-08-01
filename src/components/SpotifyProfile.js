@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config/api';
 import './SpotifyProfile.css';
 
-const SpotifyProfile = () => {
+const SpotifyProfile = ({ onOpenProfile }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -158,9 +158,20 @@ const SpotifyProfile = () => {
                 <span className="user-name">{userProfile.display_name}</span>
                 <span className="user-email">{userProfile.email}</span>
               </div>
-              <button className="disconnect-btn" onClick={handleDisconnect} title="Disconnect Spotify">
-                <span>×</span>
-              </button>
+              <div className="profile-actions">
+                {onOpenProfile && (
+                  <button 
+                    className="open-profile-btn" 
+                    onClick={() => onOpenProfile(userProfile)}
+                    title="Open User Profile"
+                  >
+                    👤
+                  </button>
+                )}
+                <button className="disconnect-btn" onClick={handleDisconnect} title="Disconnect Spotify">
+                  <span>×</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="profile-error">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getAllSongs, getSongById } from './data/songs';
 import SpotifySongRecognition from './components/SpotifySongRecognition';
 import SpotifyProfile from './components/SpotifyProfile'; // New import
+import UserProfile from './components/UserProfile';
 import './App.css';
 
 function App() {
@@ -11,6 +12,8 @@ function App() {
   const [progress, setProgress] = useState(0);
   const [detectedSong, setDetectedSong] = useState(null);
   const [showRecognition, setShowRecognition] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
+  const [spotifyUserData, setSpotifyUserData] = useState(null);
   const songs = getAllSongs();
   const intervalRef = useRef(null);
   const activeLineRef = useRef(null);
@@ -73,6 +76,11 @@ function App() {
   const handleBackFromRecognition = () => {
     setShowRecognition(false);
     setDetectedSong(null);
+  };
+
+  const handleOpenUserProfile = (userData) => {
+    setSpotifyUserData(userData);
+    setShowUserProfile(true);
   };
 
   // Auto-scroll to active line
@@ -175,7 +183,7 @@ function App() {
               <p>Discover the deeper meaning behind your favorite songs</p>
             </div>
             <div className="header-right">
-              <SpotifyProfile />
+              <SpotifyProfile onOpenProfile={handleOpenUserProfile} />
             </div>
           </div>
         </header>
@@ -186,6 +194,21 @@ function App() {
             onViewSong={handleViewSong}
             onBackToHome={handleBackFromRecognition}
           />
+        ) : showUserProfile ? (
+          <div className="user-profile-section">
+            <div className="section-header">
+              <button className="back-btn" onClick={() => setShowUserProfile(false)}>
+                ← Back to Home
+              </button>
+            </div>
+            <UserProfile 
+              spotifyUserId={spotifyUserData?.id}
+              spotifyProfile={spotifyUserData}
+              onProfileUpdate={() => {
+                // Refresh any necessary data
+              }}
+            />
+          </div>
         ) : (
           <>
             <div className="recognition-section">
