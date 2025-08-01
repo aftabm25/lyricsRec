@@ -460,7 +460,8 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
         {/* Debug info - remove this later */}
         <div style={{ fontSize: '12px', color: '#888', marginTop: '10px' }}>
           Debug: accessToken = {accessToken ? 'Connected' : 'Not connected'}, 
-          History count = {songHistory.length}
+          History count = {songHistory.length}, 
+          Last updated: {new Date().toLocaleTimeString()}
         </div>
       </div>
 
