@@ -19,7 +19,7 @@ const firestore = getFirestore(app);
 
 // Collections
 export const COLLECTIONS = {
-  USERS: 'users',
+  USERS: 'user-info',
   FRIENDSHIPS: 'friendships',
   USER_SONGS: 'user_songs'
 };
