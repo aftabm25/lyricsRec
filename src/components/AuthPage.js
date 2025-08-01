@@ -43,11 +43,14 @@ const AuthPage = ({ onAuthSuccess }) => {
 
     setIsLoading(true);
     setError('');
+    console.log('Attempting login with email:', email);
 
     try {
       const result = await authService.loginWithEmail(email, password);
+      console.log('Login result:', result);
       if (result.success) {
-        onAuthSuccess(result.user);
+        console.log('Login successful, calling onAuthSuccess');
+        onAuthSuccess(result.user, result.userData);
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -91,10 +94,13 @@ const AuthPage = ({ onAuthSuccess }) => {
 
     setIsLoading(true);
     setError('');
+    console.log('Attempting signup with email:', email, 'username:', username);
 
     try {
       const result = await authService.signUpWithEmail(email, password, username);
+      console.log('Signup result:', result);
       if (result.success) {
+        console.log('Signup successful, calling onAuthSuccess');
         onAuthSuccess(result.user, result.userData);
       }
     } catch (error) {

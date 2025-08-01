@@ -6,6 +6,7 @@ import UserDashboard from './components/UserDashboard';
 import AuthPage from './components/AuthPage';
 import { UserProvider, useUser } from './context/UserContext';
 import authService from './services/authService';
+import userService from './services/userService';
 import './App.css';
 
 function AppContent() {
@@ -26,11 +27,21 @@ function AppContent() {
 
   useEffect(() => {
     // Check if user is already authenticated
-    const unsubscribe = authService.onAuthStateChanged((user) => {
-      if (user) {
-        console.log('User is authenticated:', user);
-        setIsAuthenticated(true);
-        setCurrentUser(user);
+    const unsubscribe = authService.onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        console.log('Firebase user authenticated:', firebaseUser);
+        try {
+          // Get user data from Firestore
+          const userData = await userService.getUserByFirebaseUid(firebaseUser.uid);
+          console.log('User data from Firestore:', userData);
+          setIsAuthenticated(true);
+          setCurrentUser(userData);
+        } catch (error) {
+          console.error('Error getting user data:', error);
+          // Still set as authenticated but with basic Firebase user
+          setIsAuthenticated(true);
+          setCurrentUser(firebaseUser);
+        }
       } else {
         console.log('No user authenticated');
         setIsAuthenticated(false);
