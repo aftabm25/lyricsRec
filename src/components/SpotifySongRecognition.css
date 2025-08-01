@@ -446,6 +446,27 @@
     font-size: 0.7rem;
   }
 
+  .action-buttons {
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+  }
+
+  .view-song-btn {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+
+  .try-again-btn {
+    padding: 10px 20px;
+    font-size: 0.8rem;
+  }
+
+  .back-btn {
+    padding: 8px 20px;
+    font-size: 0.8rem;
+  }
+
   .recognition-error {
     padding: 20px;
   }
@@ -533,6 +554,27 @@
     font-size: 0.65rem;
   }
 
+  .action-buttons {
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 15px;
+  }
+
+  .view-song-btn {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+  }
+
+  .try-again-btn {
+    padding: 10px 20px;
+    font-size: 0.8rem;
+  }
+
+  .back-btn {
+    padding: 8px 20px;
+    font-size: 0.8rem;
+  }
+
   .recognition-error {
     padding: 15px;
   }
@@ -540,4 +582,75 @@
   .setup-instructions {
     padding: 12px;
   }
+} 
+
+/* Song Detected View */
+.song-detected-view {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.view-song-btn {
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  border: none;
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+}
+
+.view-song-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+}
+
+.try-again-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.try-again-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.back-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 24px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #b3b3b3;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 } 

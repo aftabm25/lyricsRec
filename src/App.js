@@ -36,7 +36,8 @@ function App() {
 
   const handleSongDetected = (song) => {
     setDetectedSong(song);
-    setShowRecognition(false);
+    // Don't hide the recognition component immediately - let the user see the enhanced info
+    // setShowRecognition(false);
 
     // Try to find a matching song in our database
     const foundSong = songs.find(s =>
@@ -45,10 +46,33 @@ function App() {
     );
 
     if (foundSong) {
+      // Show a success message instead of immediately navigating
+      // setSelectedSong(foundSong);
+    } else {
+      // Don't show alert immediately - let the user see the song info first
+      // alert(`Song detected: ${song.title} by ${song.artist}\n\nThis song is not in our database yet.`);
+    }
+  };
+
+  const handleViewSong = (song) => {
+    // Try to find a matching song in our database
+    const foundSong = songs.find(s =>
+      s.title.toLowerCase().includes(song.title.toLowerCase()) ||
+      s.artist.toLowerCase().includes(song.artist.toLowerCase())
+    );
+
+    if (foundSong) {
       setSelectedSong(foundSong);
+      setShowRecognition(false);
+      setDetectedSong(null);
     } else {
       alert(`Song detected: ${song.title} by ${song.artist}\n\nThis song is not in our database yet.`);
     }
+  };
+
+  const handleBackFromRecognition = () => {
+    setShowRecognition(false);
+    setDetectedSong(null);
   };
 
   // Auto-scroll to active line
@@ -156,7 +180,12 @@ function App() {
           </div>
         </header>
         {showRecognition ? (
-          <SpotifySongRecognition onSongDetected={handleSongDetected} />
+          <SpotifySongRecognition
+            onSongDetected={handleSongDetected}
+            detectedSong={detectedSong}
+            onViewSong={handleViewSong}
+            onBackToHome={handleBackFromRecognition}
+          />
         ) : (
           <>
             <div className="recognition-section">

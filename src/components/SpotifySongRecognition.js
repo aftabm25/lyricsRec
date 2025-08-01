@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config/api';
 import './SpotifySongRecognition.css';
 
-const SpotifySongRecognition = ({ onSongDetected }) => {
+const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBackToHome }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentSong, setCurrentSong] = useState(null);
@@ -106,6 +106,17 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
     }
   };
 
+  const handleViewSong = () => {
+    if (onViewSong && detectedSong) {
+      onViewSong(detectedSong);
+    }
+  };
+
+  const handleTryAgain = () => {
+    setCurrentSong(null);
+    onSongDetected(null);
+  };
+
   if (!isSpotifyConfigured()) {
     return (
       <div className="spotify-recognition">
@@ -141,6 +152,57 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
             <p>Please connect your Spotify account using the profile button in the header to get the currently playing song</p>
             <div className="connection-note">
               <span>💡 Look for the Spotify profile button in the top-right corner of the page</span>
+            </div>
+          </div>
+        </div>
+      ) : detectedSong ? (
+        <div className="song-detected-view">
+          <div className="current-song-info">
+            <h4>🎯 Song Detected!</h4>
+            <div className="song-details">
+              <p className="song-title">{detectedSong.title}</p>
+              <p className="song-artist">{detectedSong.artist}</p>
+              <p className="song-album">{detectedSong.album}</p>
+              
+              {/* Playback Progress */}
+              <div className="playback-progress">
+                <div className="progress-bar">
+                  <div 
+                    className="progress-fill" 
+                    style={{ width: `${detectedSong.progress_percentage}%` }}
+                  ></div>
+                </div>
+                <div className="time-info">
+                  <span className="current-time">{detectedSong.current_time}</span>
+                  <span className="total-time">{detectedSong.total_time}</span>
+                </div>
+                <div className="progress-percentage">
+                  {detectedSong.progress_percentage}% complete
+                </div>
+              </div>
+
+              <p className="song-status">
+                {detectedSong.is_playing ? '▶️ Playing' : '⏸️ Paused'}
+              </p>
+              
+              {/* Device Info */}
+              <div className="device-info">
+                <span className="device-name">📱 {detectedSong.device_name}</span>
+                <span className="device-type">({detectedSong.device_type})</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="action-buttons">
+              <button className="view-song-btn" onClick={handleViewSong}>
+                🎵 View Song & Lyrics
+              </button>
+              <button className="try-again-btn" onClick={handleTryAgain}>
+                🔄 Try Another Song
+              </button>
+              <button className="back-btn" onClick={onBackToHome}>
+                ← Back to Home
+              </button>
             </div>
           </div>
         </div>
