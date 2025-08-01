@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getAllSongs, getSongById } from './data/songs';
 import SpotifySongRecognition from './components/SpotifySongRecognition';
-import SpotifyProfile from './components/SpotifyProfile'; // New import
+import SpotifyProfile from './components/SpotifyProfile';
+import SpotifyCallback from './components/SpotifyCallback';
 import './App.css';
 
 function App() {
@@ -15,6 +16,14 @@ function App() {
   const intervalRef = useRef(null);
   const activeLineRef = useRef(null);
   const lyricsContainerRef = useRef(null);
+
+  // Check if we're on the callback route
+  const isCallbackRoute = window.location.pathname === '/callback';
+
+  // If we're on the callback route, render the callback component
+  if (isCallbackRoute) {
+    return <SpotifyCallback />;
+  }
 
   const handleSongSelect = (song) => {
     setSelectedSong(song);

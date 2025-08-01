@@ -1,0 +1,170 @@
+/* Spotify Callback Component Styles */
+.spotify-callback {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #1db954 0%, #191414 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.callback-container {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 40px;
+  backdrop-filter: blur(20px);
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.callback-header h1 {
+  color: #ffffff;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 30px;
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.callback-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Success State */
+.callback-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.success-icon {
+  font-size: 3rem;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.callback-success h2 {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.callback-success p {
+  color: #b3b3b3;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Error State */
+.callback-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.error-icon {
+  font-size: 3rem;
+}
+
+.callback-error h2 {
+  color: #e74c3c;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.callback-error p {
+  color: #b3b3b3;
+  font-size: 1rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.retry-btn {
+  background: linear-gradient(135deg, #1db954, #1ed760);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(29, 185, 84, 0.3);
+  margin-top: 10px;
+}
+
+.retry-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(29, 185, 84, 0.4);
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(29, 185, 84, 0.3);
+  border-top: 4px solid #1db954;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .callback-container {
+    padding: 30px 20px;
+  }
+
+  .callback-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .callback-success h2,
+  .callback-error h2 {
+    font-size: 1.3rem;
+  }
+
+  .success-icon,
+  .error-icon {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .callback-container {
+    padding: 25px 15px;
+  }
+
+  .callback-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .callback-success h2,
+  .callback-error h2 {
+    font-size: 1.2rem;
+  }
+
+  .success-icon,
+  .error-icon {
+    font-size: 2rem;
+  }
+
+  .retry-btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+} 
