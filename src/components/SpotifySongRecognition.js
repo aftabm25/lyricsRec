@@ -132,6 +132,10 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
         } else {
           // Same song, just update progress
           setCurrentSong(song);
+          // Also update detectedSong if it exists
+          if (detectedSong && isSameSong(detectedSong, song)) {
+            onSongDetected(song);
+          }
         }
         
         setLastUpdateTime(new Date().toLocaleTimeString());
@@ -157,14 +161,17 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
       clearInterval(pollingIntervalRef.current);
     }
     
+    console.log('Starting monitoring...');
     setIsMonitoring(true);
     // Poll every 2 seconds for real-time updates
     pollingIntervalRef.current = setInterval(() => {
+      console.log('Polling for updates...');
       getCurrentlyPlaying(true);
     }, 2000);
   };
 
   const stopMonitoring = () => {
+    console.log('Stopping monitoring...');
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
@@ -186,7 +193,8 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
 
   const handleStartMonitoring = async () => {
     await getCurrentlyPlaying();
-    if (currentSong) {
+    // Start monitoring if we have a song (either currentSong or detectedSong)
+    if (currentSong || detectedSong) {
       startMonitoring();
     }
   };
@@ -194,6 +202,24 @@ const SpotifySongRecognition = ({ onSongDetected, detectedSong, onViewSong, onBa
   const handleStopMonitoring = () => {
     stopMonitoring();
   };
+
+  // Auto-start monitoring when a song is first detected
+  useEffect(() => {
+    console.log('detectedSong changed:', detectedSong, 'isMonitoring:', isMonitoring);
+    if (detectedSong && !isMonitoring) {
+      console.log('Auto-starting monitoring for detected song');
+      startMonitoring();
+    }
+  }, [detectedSong]);
+
+  // Cleanup monitoring when component unmounts or detectedSong changes
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
 
   if (!isSpotifyConfigured()) {
     return (
