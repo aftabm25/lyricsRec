@@ -3,7 +3,6 @@ import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config
 import './SpotifySongRecognition.css';
 
 const SpotifySongRecognition = ({ onSongDetected }) => {
-  const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentSong, setCurrentSong] = useState(null);
@@ -20,62 +19,17 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
     const storedToken = localStorage.getItem('spotify_access_token');
     if (storedToken) {
       setAccessToken(storedToken);
-      setIsConnected(true);
+    } else {
+      setError('Please connect to Spotify using the profile button in the header.');
     }
   }, []);
 
-  const getSpotifyAuthUrl = () => {
-    const config = getSpotifyConfig();
-    const params = new URLSearchParams({
-      client_id: config.CLIENT_ID,
-      response_type: 'code',
-      redirect_uri: config.REDIRECT_URI,
-      scope: config.SCOPES,
-      show_dialog: 'true'
-    });
-    
-    return `https://accounts.spotify.com/authorize?${params.toString()}`;
-  };
-
-  const handleSpotifyLogin = () => {
-    const authUrl = getSpotifyAuthUrl();
-    window.location.href = authUrl;
-  };
-
-  const exchangeCodeForToken = async (code) => {
-    try {
-      const config = getSpotifyConfig();
-      const response = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + btoa(config.CLIENT_ID + ':' + config.CLIENT_SECRET)
-        },
-        body: new URLSearchParams({
-          grant_type: 'authorization_code',
-          code: code,
-          redirect_uri: config.REDIRECT_URI
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.access_token) {
-        setAccessToken(data.access_token);
-        localStorage.setItem('spotify_access_token', data.access_token);
-        setIsConnected(true);
-        return true;
-      } else {
-        throw new Error('Failed to get access token');
-      }
-    } catch (error) {
-      console.error('Error exchanging code for token:', error);
-      setError('Failed to connect to Spotify. Please try again.');
-      return false;
-    }
-  };
-
   const getCurrentlyPlaying = async () => {
+    if (!accessToken) {
+      setError('Please connect to Spotify using the profile button in the header.');
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -90,8 +44,7 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
         // Token expired, clear it and ask user to reconnect
         localStorage.removeItem('spotify_access_token');
         setAccessToken(null);
-        setIsConnected(false);
-        setError('Spotify session expired. Please reconnect.');
+        setError('Spotify session expired. Please reconnect using the profile button in the header.');
         return;
       }
 
@@ -99,6 +52,10 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
         // No content - nothing is currently playing
         setError('No song is currently playing on Spotify. Please start playing a song and try again.');
         return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -113,7 +70,7 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
           progress_ms: data.progress_ms,
           is_playing: data.is_playing
         };
-
+        
         setCurrentSong(song);
         onSongDetected(song);
       } else {
@@ -127,26 +84,6 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
     }
   };
 
-  const handleDisconnect = () => {
-    localStorage.removeItem('spotify_access_token');
-    setAccessToken(null);
-    setIsConnected(false);
-    setCurrentSong(null);
-    setError(null);
-  };
-
-  // Handle OAuth callback
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    
-    if (code && !isConnected) {
-      exchangeCodeForToken(code);
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [isConnected]);
-
   if (!isSpotifyConfigured()) {
     return (
       <div className="spotify-recognition">
@@ -158,7 +95,7 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
             <ol>
               <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">Spotify Developer Dashboard</a></li>
               <li>Create a new app</li>
-              <li>Add your redirect URI: <code>http://localhost:3000/callback</code></li>
+              <li>Add your redirect URI: <code>http://127.0.0.1:3000/callback</code></li>
               <li>Copy your Client ID and Client Secret</li>
               <li>Update the config file with your credentials</li>
             </ol>
@@ -175,27 +112,18 @@ const SpotifySongRecognition = ({ onSongDetected }) => {
         <p>Get the currently playing song from your Spotify account</p>
       </div>
 
-      {!isConnected ? (
+      {!accessToken ? (
         <div className="spotify-login">
           <div className="login-card">
             <h3>Connect to Spotify</h3>
-            <p>Connect your Spotify account to get the currently playing song</p>
-            <button className="spotify-login-btn" onClick={handleSpotifyLogin}>
-              <span className="spotify-icon">🎵</span>
-              Connect Spotify Account
-            </button>
+            <p>Please connect your Spotify account using the profile button in the header to get the currently playing song</p>
+            <div className="connection-note">
+              <span>💡 Look for the Spotify profile button in the top-right corner of the page</span>
+            </div>
           </div>
         </div>
       ) : (
         <div className="spotify-controls">
-          <div className="connection-status">
-            <span className="status-dot connected"></span>
-            <span>Connected to Spotify</span>
-            <button className="disconnect-btn" onClick={handleDisconnect}>
-              Disconnect
-            </button>
-          </div>
-
           <button 
             className="get-current-song-btn" 
             onClick={getCurrentlyPlaying}

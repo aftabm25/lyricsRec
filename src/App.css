@@ -44,16 +44,19 @@ body {
   align-items: flex-start;
   max-width: 1200px;
   margin: 0 auto;
+  gap: 20px;
 }
 
 .header-left {
   flex: 1;
   text-align: left;
+  min-width: 0; /* Allow text to shrink */
 }
 
 .header-right {
   flex-shrink: 0;
-  margin-left: 20px;
+  display: flex;
+  align-items: flex-start;
 }
 
 .app-header h1 {
@@ -65,6 +68,7 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  line-height: 1.2;
 }
 
 .app-header p {
@@ -196,12 +200,14 @@ body {
   padding: 20px;
 }
 
+/* Song View Header */
 .song-view-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 30px;
   padding: 0 20px;
+  gap: 20px;
 }
 
 .back-button {
@@ -218,6 +224,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .back-button:hover {
@@ -416,9 +423,11 @@ body {
 
   .header-left {
     text-align: center;
+    order: 1;
   }
 
   .header-right {
+    order: 2;
     margin-left: 0;
   }
 
@@ -489,12 +498,24 @@ body {
     margin-bottom: 30px;
   }
 
+  .header-content {
+    gap: 15px;
+  }
+
   .app-header h1 {
     font-size: 1.8rem;
   }
 
+  .app-header p {
+    font-size: 0.9rem;
+  }
+
   .song-view {
     padding: 15px;
+  }
+
+  .song-view-header {
+    padding: 0 10px;
   }
 
   .song-header h1 {
@@ -503,5 +524,19 @@ body {
 
   .lyrics-container {
     padding: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .app-header h1 {
+    font-size: 1.6rem;
+  }
+
+  .app-header p {
+    font-size: 0.85rem;
+  }
+
+  .song-header h1 {
+    font-size: 1.6rem;
   }
 }
