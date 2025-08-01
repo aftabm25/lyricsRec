@@ -70,13 +70,19 @@ class UserService {
   // Get user by Spotify ID
   async getUserBySpotifyId(spotifyId) {
     try {
+      console.log('Looking up user by Spotify ID:', spotifyId);
       const userRef = doc(firestore, COLLECTIONS.USERS, spotifyId);
       const docSnap = await getDoc(userRef);
       
+      console.log('Document exists:', docSnap.exists());
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
+        const userData = { id: docSnap.id, ...docSnap.data() };
+        console.log('Found user data:', userData);
+        return userData;
+      } else {
+        console.log('No user found with Spotify ID:', spotifyId);
+        return null;
       }
-      return null;
     } catch (error) {
       console.error('Error getting user by Spotify ID:', error);
       throw error;

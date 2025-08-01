@@ -82,27 +82,30 @@ class AuthService {
     try {
       console.log('Attempting to login with Spotify:', spotifyUser.id);
       
-      // Check if user exists in our database
+      // Check if user exists in our database by Spotify ID
       const existingUser = await userService.getUserBySpotifyId(spotifyUser.id);
+      console.log('Existing user lookup result:', existingUser);
       
       if (existingUser) {
         // User exists, update their profile and return success
+        console.log('Found existing user, updating profile...');
         await userService.updateUserProfile(spotifyUser.id, {
           displayName: spotifyUser.display_name,
           profileImage: spotifyUser.images?.[0]?.url || null,
           lastLoginAt: new Date()
         });
         
-        console.log('Existing user logged in with Spotify');
+        console.log('Existing user logged in with Spotify successfully');
         return { success: true, user: existingUser, isExistingUser: true };
       } else {
         // User doesn't exist, need to sign up
-        console.log('New user needs to sign up');
+        console.log('No existing user found, needs signup');
         return { success: false, needsSignup: true, spotifyUser };
       }
     } catch (error) {
-      console.error('Error logging in with Spotify:', error);
-      throw error;
+      console.error('Error in loginWithSpotify:', error);
+      // If there's an error, assume user needs signup
+      return { success: false, needsSignup: true, spotifyUser, error: error.message };
     }
   }
 

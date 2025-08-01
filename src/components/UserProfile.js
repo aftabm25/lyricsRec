@@ -37,6 +37,7 @@ const UserProfile = () => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('Fetching user profile with token...');
 
       const response = await fetch('https://api.spotify.com/v1/me', {
         headers: {
@@ -46,6 +47,7 @@ const UserProfile = () => {
 
       if (response.status === 401) {
         // Token expired, clear it
+        console.log('Token expired, clearing...');
         localStorage.removeItem('spotify_access_token');
         setAccessToken(null);
         setIsConnected(false);
@@ -56,14 +58,18 @@ const UserProfile = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Spotify profile data:', data);
         setUserProfile(data);
         
         // Try to login with Spotify
         try {
+          console.log('Attempting to login with Spotify...');
           const loginResult = await authService.loginWithSpotify(data);
+          console.log('Login result:', loginResult);
           
           if (loginResult.success) {
             // User exists, set the user data
+            console.log('User exists, setting user data...');
             setDbUser(loginResult.user);
             
             // Load friend requests and friends
@@ -73,12 +79,16 @@ const UserProfile = () => {
             }
           } else if (loginResult.needsSignup) {
             // New user needs to sign up
+            console.log('New user needs signup, showing signup modal...');
             setTempSpotifyUser(data);
             setShowSignupModal(true);
           }
         } catch (authError) {
           console.error('Auth error:', authError);
-          // Continue with basic profile display
+          // If auth fails, show signup modal as fallback
+          console.log('Auth failed, showing signup modal as fallback...');
+          setTempSpotifyUser(data);
+          setShowSignupModal(true);
         }
       } else {
         throw new Error('Failed to fetch user profile');
