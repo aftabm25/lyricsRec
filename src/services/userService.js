@@ -13,6 +13,32 @@ import {
 import firestore, { COLLECTIONS } from '../config/firestore';
 
 class UserService {
+  // Create user document in Firestore
+  async createUserDocument(firebaseUid, userData) {
+    try {
+      const userRef = doc(firestore, COLLECTIONS.USERS, firebaseUid);
+      await setDoc(userRef, userData);
+      console.log('User document created in Firestore');
+      return { id: firebaseUid, ...userData };
+    } catch (error) {
+      console.error('Error creating user document:', error);
+      throw error;
+    }
+  }
+
+  // Update last login time
+  async updateLastLogin(firebaseUid) {
+    try {
+      const userRef = doc(firestore, COLLECTIONS.USERS, firebaseUid);
+      await updateDoc(userRef, {
+        lastLoginAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error('Error updating last login:', error);
+      throw error;
+    }
+  }
+
   // Create or update user profile
   async createOrUpdateUser(spotifyUser, username = null) {
     try {

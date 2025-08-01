@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -17,6 +18,9 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firestore
 const firestore = getFirestore(app);
 
+// Initialize Auth
+const auth = getAuth(app);
+
 // Collections
 export const COLLECTIONS = {
   USERS: 'user-info',
@@ -24,4 +28,5 @@ export const COLLECTIONS = {
   USER_SONGS: 'user_songs'
 };
 
+export { auth };
 export default firestore; 

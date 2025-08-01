@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { SPOTIFY_CONFIG, isSpotifyConfigured, getSpotifyConfig } from '../config/api';
 import userService from '../services/userService';
+import authService from '../services/authService';
+import SignupModal from './SignupModal';
 import './UserProfile.css';
 
 const UserProfile = () => {
@@ -13,11 +15,13 @@ const UserProfile = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [showSignupModal, setShowSignupModal] = useState(false);
   const [friendRequests, setFriendRequests] = useState([]);
   const [friends, setFriends] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [tempSpotifyUser, setTempSpotifyUser] = useState(null);
 
   useEffect(() => {
     // Check if we have a stored access token
@@ -54,19 +58,27 @@ const UserProfile = () => {
         const data = await response.json();
         setUserProfile(data);
         
-        // Create or get user from database
+        // Try to login with Spotify
         try {
-          const dbUserData = await userService.createOrUpdateUser(data);
-          setDbUser(dbUserData);
+          const loginResult = await authService.loginWithSpotify(data);
           
-          // Load friend requests and friends
-          if (dbUserData) {
-            loadFriendRequests(dbUserData.id);
-            loadFriends(dbUserData.id);
+          if (loginResult.success) {
+            // User exists, set the user data
+            setDbUser(loginResult.user);
+            
+            // Load friend requests and friends
+            if (loginResult.user) {
+              loadFriendRequests(loginResult.user.id);
+              loadFriends(loginResult.user.id);
+            }
+          } else if (loginResult.needsSignup) {
+            // New user needs to sign up
+            setTempSpotifyUser(data);
+            setShowSignupModal(true);
           }
-        } catch (dbError) {
-          console.error('Database error:', dbError);
-          // Continue with Spotify profile even if DB fails
+        } catch (authError) {
+          console.error('Auth error:', authError);
+          // Continue with basic profile display
         }
       } else {
         throw new Error('Failed to fetch user profile');
@@ -77,6 +89,25 @@ const UserProfile = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSignupSuccess = (firebaseUser, userData) => {
+    setShowSignupModal(false);
+    setTempSpotifyUser(null);
+    setDbUser(userData);
+    
+    // Load friend requests and friends
+    if (userData) {
+      loadFriendRequests(userData.id);
+      loadFriends(userData.id);
+    }
+  };
+
+  const handleSignupCancel = () => {
+    setShowSignupModal(false);
+    setTempSpotifyUser(null);
+    // Disconnect Spotify since user cancelled signup
+    handleDisconnect();
   };
 
   const loadFriendRequests = async (userId) => {
@@ -120,6 +151,8 @@ const UserProfile = () => {
     setError(null);
     setFriendRequests([]);
     setFriends([]);
+    setTempSpotifyUser(null);
+    setShowSignupModal(false);
   };
 
   // Handle OAuth callback
@@ -297,6 +330,15 @@ const UserProfile = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Signup Modal */}
+      {showSignupModal && tempSpotifyUser && (
+        <SignupModal
+          spotifyUser={tempSpotifyUser}
+          onSignupSuccess={handleSignupSuccess}
+          onCancel={handleSignupCancel}
+        />
       )}
 
       {/* Profile Modal */}
