@@ -5,10 +5,10 @@ import authService from '../services/authService';
 import SignupModal from './SignupModal';
 import './UserProfile.css';
 
-const UserProfile = () => {
+const UserProfile = ({ currentUser }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [userProfile, setUserProfile] = useState(null);
-  const [dbUser, setDbUser] = useState(null);
+  const [dbUser, setDbUser] = useState(currentUser);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
@@ -25,14 +25,17 @@ const UserProfile = () => {
   const [isCheckingUser, setIsCheckingUser] = useState(false);
 
   useEffect(() => {
-    // Check if we have a stored access token
-    const storedToken = localStorage.getItem('spotify_access_token');
-    if (storedToken) {
-      setAccessToken(storedToken);
-      setIsConnected(true);
-      fetchUserProfile(storedToken);
+    if (currentUser) {
+      setDbUser(currentUser);
+      // Check if user has Spotify connected
+      if (currentUser.spotifyId) {
+        setIsConnected(true);
+        // Load friend requests and friends
+        loadFriendRequests(currentUser.id);
+        loadFriends(currentUser.id);
+      }
     }
-  }, []);
+  }, [currentUser]);
 
   const fetchUserProfile = async (token) => {
     try {

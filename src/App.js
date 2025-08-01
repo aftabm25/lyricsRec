@@ -3,7 +3,9 @@ import { getAllSongs, getSongById } from './data/songs';
 import SpotifySongRecognition from './components/SpotifySongRecognition';
 import UserProfile from './components/UserProfile';
 import UserDashboard from './components/UserDashboard';
+import AuthPage from './components/AuthPage';
 import { UserProvider, useUser } from './context/UserContext';
+import authService from './services/authService';
 import './App.css';
 
 function AppContent() {
@@ -14,11 +16,47 @@ function AppContent() {
   const [detectedSong, setDetectedSong] = useState(null);
   const [showRecognition, setShowRecognition] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const songs = getAllSongs();
   const intervalRef = useRef(null);
   const activeLineRef = useRef(null);
   const lyricsContainerRef = useRef(null);
-  const { currentUser, isAuthenticated } = useUser();
+
+  useEffect(() => {
+    // Check if user is already authenticated
+    const unsubscribe = authService.onAuthStateChanged((user) => {
+      if (user) {
+        console.log('User is authenticated:', user);
+        setIsAuthenticated(true);
+        setCurrentUser(user);
+      } else {
+        console.log('No user authenticated');
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleAuthSuccess = (user, userData) => {
+    console.log('Authentication successful:', user, userData);
+    setIsAuthenticated(true);
+    setCurrentUser(userData || user);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await authService.signOut();
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const handleSongSelect = (song) => {
     setSelectedSong(song);
@@ -122,116 +160,140 @@ function AppContent() {
     };
   }, [isPlaying, selectedSong]);
 
-  if (selectedSong) {
+  // Show loading while checking authentication
+  if (isLoading) {
     return (
-      <div className="app">
-        <div className="song-view">
-          <div className="song-view-header">
-            <button className="back-button" onClick={handleBackToHome}>
-              ← Back to Songs
-            </button>
-            <UserProfile />
-          </div>
-          <div className="song-header">
-            <h1>{selectedSong.title}</h1>
-            <p className="artist">{selectedSong.artist}</p>
-            <p className="album">{selectedSong.album} • {selectedSong.year}</p>
-          </div>
-          <div className="player-controls">
-            <button className="play-button" onClick={togglePlay}>
-              {isPlaying ? '⏸️' : '▶️'}
-            </button>
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-            <span className="progress-text">
-              {Math.floor(progress)}%
-            </span>
-          </div>
-          <div className="lyrics-container" ref={lyricsContainerRef}>
-            {selectedSong.lyrics.map((lyric, index) => (
-              <div
-                key={index}
-                ref={index === currentLineIndex ? activeLineRef : null}
-                className={`lyric-line ${index === currentLineIndex ? 'active' : ''} ${
-                  index < currentLineIndex ? 'completed' : ''
-                }`}
-              >
-                <div className="lyric-text">{lyric.line}</div>
-                <div className="lyric-meaning">{lyric.meaning}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="app-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading...</p>
       </div>
     );
   }
 
+  // Show auth page if not authenticated
+  if (!isAuthenticated) {
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  // Show main app if authenticated
   return (
-    <div className="app">
-      <div className="home-screen">
-        <header className="app-header">
-          <div className="header-content">
-            <div className="header-left">
-              <h1>Lyrics & Meanings</h1>
-              <p>Discover the deeper meaning behind your favorite songs</p>
-            </div>
-            <div className="header-right">
-              <UserProfile />
-            </div>
+    <div className="App">
+      <header className="App-header">
+        <div className="header-content">
+          <h1 onClick={handleBackToHome} className="app-title">
+            LyricsRec
+          </h1>
+          <div className="header-actions">
+            <UserProfile currentUser={currentUser} />
+            <button 
+              className="signout-btn" 
+              onClick={handleSignOut}
+              title="Sign Out"
+            >
+              🚪
+            </button>
           </div>
-        </header>
-        
-        {showDashboard && isAuthenticated ? (
-          <UserDashboard userId={currentUser.database.id} />
-        ) : showRecognition ? (
-          <SpotifySongRecognition
-            onSongDetected={handleSongDetected}
-            detectedSong={detectedSong}
-            onViewSong={handleViewSong}
-            onBackToHome={handleBackFromRecognition}
-          />
-        ) : (
-          <>
+        </div>
+      </header>
+
+      <main className="App-main">
+        {!selectedSong && !showRecognition && !showDashboard && (
+          <div className="home-content">
+            <div className="welcome-section">
+              <h2>Welcome, {currentUser?.username || currentUser?.displayName || 'User'}!</h2>
+              <p>Discover and share your favorite music with friends</p>
+            </div>
+            
             <div className="action-buttons">
-              <button
-                className="recognize-song-btn"
+              <button 
+                className="action-btn primary"
                 onClick={() => setShowRecognition(true)}
               >
-                🎵 Get Current Spotify Song
+                🎵 Recognize Song
               </button>
-              {isAuthenticated && (
-                <button
-                  className="dashboard-btn"
-                  onClick={() => setShowDashboard(true)}
-                >
-                  📊 My Dashboard
-                </button>
-              )}
+              
+              <button 
+                className="action-btn secondary"
+                onClick={() => setShowDashboard(true)}
+              >
+                📊 My Dashboard
+              </button>
             </div>
-            <div className="songs-grid">
-              {songs.map((song) => (
-                <div
-                  key={song.id}
-                  className="song-card"
-                  onClick={() => handleSongSelect(song)}
-                >
-                  <div className="song-info">
-                    <h2 className="song-title">{song.title}</h2>
-                    <p className="song-artist">{song.artist}</p>
-                    <p className="song-album">{song.album} • {song.year}</p>
-                    <p className="song-lyrics-count">{song.lyrics.length} lines</p>
+
+            <div className="recent-songs">
+              <h3>Recent Songs</h3>
+              <div className="songs-grid">
+                {songs.slice(0, 6).map((song) => (
+                  <div 
+                    key={song.id} 
+                    className="song-card"
+                    onClick={() => handleSongSelect(song)}
+                  >
+                    <div className="song-info">
+                      <h4>{song.title}</h4>
+                      <p>{song.artist}</p>
+                    </div>
                   </div>
-                  <div className="song-arrow">→</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRecognition && (
+          <SpotifySongRecognition
+            onSongDetected={handleSongDetected}
+            onBack={handleBackFromRecognition}
+          />
+        )}
+
+        {showDashboard && currentUser && (
+          <UserDashboard userId={currentUser.id} />
+        )}
+
+        {selectedSong && (
+          <div className="song-player">
+            <div className="song-header">
+              <button className="back-btn" onClick={handleBackToHome}>
+                ← Back
+              </button>
+              <div className="song-info">
+                <h2>{selectedSong.title}</h2>
+                <p>{selectedSong.artist}</p>
+              </div>
+            </div>
+
+            <div className="player-controls">
+              <button 
+                className={`play-btn ${isPlaying ? 'playing' : ''}`}
+                onClick={togglePlay}
+              >
+                {isPlaying ? '⏸️' : '▶️'}
+              </button>
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="lyrics-container" ref={lyricsContainerRef}>
+              {selectedSong.lyrics.map((line, index) => (
+                <div
+                  key={index}
+                  ref={index === currentLineIndex ? activeLineRef : null}
+                  className={`lyrics-line ${
+                    index === currentLineIndex && isPlaying ? 'active' : ''
+                  }`}
+                >
+                  {line}
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

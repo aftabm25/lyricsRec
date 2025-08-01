@@ -20,6 +20,38 @@ class AuthService {
     }
   }
 
+  // Sign up new user with email/password (without Spotify)
+  async signUpWithEmail(email, password, username) {
+    try {
+      console.log('Creating new user account with email:', email);
+      
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      // Create user document in Firestore
+      const userData = {
+        displayName: username,
+        email: email,
+        username: username,
+        firebaseUid: firebaseUser.uid,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLoginAt: new Date(),
+        isActive: true,
+        spotifyConnected: false
+      };
+
+      await userService.createUserDocument(firebaseUser.uid, userData);
+      
+      console.log('User account created successfully');
+      return { success: true, user: firebaseUser, userData };
+    } catch (error) {
+      console.error('Error creating user account:', error);
+      throw error;
+    }
+  }
+
   // Sign up new user with email/password and Spotify data
   async signUpWithEmailAndSpotify(email, password, spotifyUser, username) {
     try {
@@ -64,13 +96,16 @@ class AuthService {
     try {
       console.log('Logging in user with email:', email);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      const firebaseUser = userCredential.user;
+      
+      // Get user data from Firestore
+      const userData = await userService.getUserByFirebaseUid(firebaseUser.uid);
       
       // Update last login time
-      await userService.updateLastLogin(user.uid);
+      await userService.updateLastLogin(firebaseUser.uid);
       
       console.log('User logged in successfully');
-      return { success: true, user };
+      return { success: true, user: firebaseUser, userData };
     } catch (error) {
       console.error('Error logging in:', error);
       throw error;
